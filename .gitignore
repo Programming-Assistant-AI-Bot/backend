@@ -1,0 +1,16 @@
+# Virtual environment
+venv/
+env/
+
+# Environment variables
+.env
+.env.*
+
+# Python bytecode
+__pycache__/
+*.py[cod]
+*.so
+*.egg
+*.egg-info/
+
+

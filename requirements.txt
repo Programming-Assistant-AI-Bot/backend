@@ -1,0 +1,6 @@
+langchain
+langchain_community
+langchain_groq
+fastapi
+uvicorn
+langchain-ollama
