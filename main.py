@@ -19,4 +19,4 @@ app.include_router(chatRoutes.router, prefix="/chats")
 
 @app.get("/")
 async def root():
-    return {"message": "Asset Tracking System API is running!"}
+    return {"message": "System is running"}
