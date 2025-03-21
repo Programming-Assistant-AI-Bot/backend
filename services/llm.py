@@ -14,6 +14,9 @@ from langchain_core.chat_history import BaseChatMessageHistory
 from langchain_core.runnables.history import RunnableWithMessageHistory
 from pymongo import MongoClient
 from datetime import datetime,timezone
+from motor.motor_asyncio import AsyncIOMotorClient
+import nest_asyncio
+nest_asyncio.apply()
 
 
 load_dotenv()
@@ -47,12 +50,11 @@ class LimitedMongoDBChatMessageHistory(BaseChatMessageHistory):
         self.collection_name = collection_name
         self.session_id = session_id
         self.limit = limit
-        self.client = MongoClient(connection_string)
+        self.client = AsyncIOMotorClient(DB_URL)
         self.db = self.client[database_name]
         self.collection = self.db[collection_name]
     
-    @property
-    def messages(self) -> List[BaseMessage]:
+    async def agent_messages(self) -> List[BaseMessage]:
         """Retrieve messages from MongoDB based on your specific data structure"""
         # Get the most recent entries for this session
         cursor = self.collection.find(
@@ -61,7 +63,7 @@ class LimitedMongoDBChatMessageHistory(BaseChatMessageHistory):
         
         # Process the documents
         message_list = []
-        for doc in cursor:
+        async for doc in cursor:
             try:
                 # Parse the History field which contains the JSON string
                 history_data = doc
@@ -75,7 +77,7 @@ class LimitedMongoDBChatMessageHistory(BaseChatMessageHistory):
                     continue  # Skip unknown message types
                 
                 message_list.append(message)
-            except (json.JSONDecodeError, KeyError) as e:
+            except KeyError as e:
                 # Handle errors gracefully
                 print(f"Error parsing message: {e}")
                 continue
@@ -84,7 +86,10 @@ class LimitedMongoDBChatMessageHistory(BaseChatMessageHistory):
         message_list.reverse()
         return message_list
     
-    def add_message(self, message: BaseMessage) -> None:
+    async def aget_messages(self):
+        return await self.agent_messages()
+    
+    async def add_message_async(self, message: BaseMessage) -> None:
         """Add a message to the history"""
         # Convert the message to a JSON-serializable format
         if isinstance(message, HumanMessage):
@@ -103,11 +108,30 @@ class LimitedMongoDBChatMessageHistory(BaseChatMessageHistory):
         }
         
         # Insert into MongoDB
-        self.collection.insert_one(history_data)
+        await self.collection.insert_one(history_data)
+    
+    def add_message(self, message):
+        try:
+            loop = asyncio.get_event_loop()
+            loop.run_until_complete(self.add_message_async(message))
+        except RuntimeError:
+            asyncio.create_task(self.add_message_async(message))
+    
+    async def aclear(self) -> None:
+        await self.collection.delete_many({"sessionId": self.session_id})
     
     def clear(self) -> None:
         """Clear the history"""
-        self.collection.delete_many({"sessionId": self.session_id})
+        loop = asyncio.get_event_loop()
+        try:
+            loop.run_until_complete(self.aclear())
+        except RuntimeError:
+            asyncio.create_task(self.aclear())
+
+    @property
+    def messages(self) -> List[BaseMessage]:
+        loop = asyncio.get_event_loop()
+        return loop.run_until_complete(self.agent_messages())
 
 def get_session_history(session_id: str) -> BaseChatMessageHistory:
     return LimitedMongoDBChatMessageHistory(
@@ -129,15 +153,15 @@ def get_callback_handler():
     return AsyncIteratorCallbackHandler()
 
 
-# async def testLLM():
-#     question = input("Enter the prompt: ")
-#     sessionId = "123"
-#     callback_handler = get_callback_handler()
-#     result = await conversational_chain.ainvoke(
-#         {"input":question},  # Use the actual question rather than "Test message"
-#         config={"configurable": {"session_id": sessionId},"callbacks": [callback_handler]}
-#     )
-#     print(result)
+async def testLLM():
+    question = input("Enter the prompt: ")
+    sessionId = "123"
+    callback_handler = get_callback_handler()
+    result = await conversational_chain.ainvoke(
+        {"input":question},  # Use the actual question rather than "Test message"
+        config={"configurable": {"session_id": sessionId},"callbacks": [callback_handler]}
+    )
+    print(result)
 
-# asyncio.run(testLLM())
+asyncio.run(testLLM())
 
