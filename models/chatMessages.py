@@ -7,9 +7,4 @@ class Message(BaseModel):
     sessionId : str
     role : Literal["assistant","user"]
     content: str
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
-
-    class config:
-        json_encoders = {
-            datetime: lambda v:v.isoformat()
-        }
+    timestamp: datetime 
