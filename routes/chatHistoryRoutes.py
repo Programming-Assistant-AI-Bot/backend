@@ -1,6 +1,6 @@
 # items.py
 from fastapi import APIRouter
-from services.chatMessageServices import getMessage
+from services.chatHistory.chatMessageServices import getMessage
 
 # Create the API router for "items"
 router = APIRouter()
