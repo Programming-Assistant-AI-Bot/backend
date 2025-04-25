@@ -23,7 +23,7 @@ class LimitedMongoDBChatMessageHistory(BaseChatMessageHistory):
         # Get the most recent entries for this session
         cursor = self.collection.find(
             {"sessionId": self.session_id}
-        ).sort("timestamp",1).limit(self.limit)
+        ).sort("timestamp",-1).limit(self.limit)
         
         # Process the documents
         message_list = []

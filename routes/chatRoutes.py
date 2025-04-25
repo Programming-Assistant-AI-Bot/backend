@@ -5,6 +5,7 @@ from schemas.message import MessageRequest
 from services.chatHistory.llm import llm_chain, get_callback_handler , conversational_chain
 from models.chatMessages import Message
 from services.chatHistory.chatMessageServices import insertMessage
+import json
 
 
 router = APIRouter()
@@ -35,14 +36,14 @@ async def stream_chat_response(sessionId: str, request: MessageRequest):
             counter = 0
             async for token in callback_handler.aiter():
                 full_response += token
-                yield f"id: {counter}\nevent: message\ndata: {token}\n\n"
+                
+                # Package the token in a structured JSON format
+                json_data = json.dumps({"content": token, "formatted": True})
+                yield f"id: {counter}\nevent: message\ndata: {json_data}\n\n"
                 counter += 1
             
             # Wait for the task to complete
             result = await task
-            
-            # Send the completion signal
-            yield f"id: {counter}\nevent: message\ndata: [DONE]\n\n"
             
         except Exception as e:
             print(f"Error in event generator: {str(e)}")

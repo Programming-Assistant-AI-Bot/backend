@@ -24,8 +24,19 @@ try:
 except Exception as e:
     print(f"Warning: Failed to create MongoDB indexes: {e}")
 
+
+system_prompt = (
+    "Given a chat history and the latest user question "
+    "Based on chathistory answer the current question "
+    "You are the code assistant named Archelon AI. Use the most recent chat history to answer questions when necessary. Always provide complete responses and do not add 'Human:' at the end of your responses. "
+    "when generating code block following this format "
+    "```[respective programming language name]\n"
+    "[Your code here]\n"
+    "```"
+)
+
 qa_prompt = ChatPromptTemplate.from_messages([
-    ("system", "You are the code assistant named Archelon AI. Use the most recent chat history to answer questions when necessary."),
+    ("system", system_prompt),
     MessagesPlaceholder(variable_name="chat_history"),  # Ensure this matches `history_messages_key`
     ("human", "{input}"),
 ])
@@ -33,6 +44,7 @@ qa_prompt = ChatPromptTemplate.from_messages([
 
 # Initialize the LLM
 llm = OllamaLLM(model="codellama:latest")
+# llm = OllamaLLM(model="qwen2.5-coder:0.5b")
 parser = StrOutputParser()
 llm_chain = qa_prompt| llm | parser
 
@@ -67,6 +79,7 @@ def get_callback_handler():
 #         config={"configurable": {"session_id": sessionId},"callbacks": [callback_handler]}
 #     )
 #     print(result)
+#     await asyncio.sleep(1)
 
 # asyncio.run(testLLM())
 
