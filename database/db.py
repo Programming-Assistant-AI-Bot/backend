@@ -11,3 +11,4 @@ client = AsyncIOMotorClient(DB_URL)
 Chatbot = client.Chatbot
 
 message_collection = Chatbot["Messages"]
+session_collection = Chatbot.get_collection("sessions")
