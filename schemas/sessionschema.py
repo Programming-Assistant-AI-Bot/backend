@@ -33,13 +33,20 @@ async def getFirstMessageBySessionId(session_id: str):
         return {"error": "No message found for this sessionId"}
 
 #Sessions
-def getIndividualSessions(session)->dict:
-    return{
+# Convert a single session document to dictionary
+def getIndividualSession(session) -> dict:
+    return {
         "id": str(session["_id"]),
         "sessionId": session["sessionId"],
         "sessionName": session["sessionName"],
-        "created_at": session["created_at"]  
+        "createdAt": session["createdAt"],
+        "updatedAt": session["updatedAt"]
     }
+
+# Convert a list of session documents to a list of dictionaries
+def getAllSessions(sessions) -> list:
+    return [getIndividualSession(session) for session in sessions]
+
 
 
 

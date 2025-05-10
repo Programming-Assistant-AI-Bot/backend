@@ -6,6 +6,7 @@ from database.db import session_collection
 from schemas.sessionschema import getFirstMessageBySessionId
 from utils.gemini import generate_session_title
 from datetime import datetime
+from schemas.sessionschema import getAllSessions
 
 
 router=APIRouter(prefix="/session",tags=["session"])
@@ -63,5 +64,12 @@ async def generate_session_title_route(sessionId: str):
             "createdAt":now,
             "updatedAt":now,
             }
+
+
+@router.get("/getAllSessions")
+async def fetch_Sessions():
+    sessions_cursor = session_collection.find()
+    sessions = await sessions_cursor.to_list(length=None)
+    return getAllSessions(sessions)
 
 
