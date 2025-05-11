@@ -43,8 +43,8 @@ qa_prompt = ChatPromptTemplate.from_messages([
 
 
 # Initialize the LLM
-llm = OllamaLLM(model="codellama:latest")
-# llm = OllamaLLM(model="qwen2.5-coder:0.5b")
+# llm = OllamaLLM(model="codellama:latest")
+llm = OllamaLLM(model="qwen2.5-coder:0.5b")
 parser = StrOutputParser()
 llm_chain = qa_prompt| llm | parser
 
