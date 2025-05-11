@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routes import chatHistoryRoutes, chatRoutes
+from routes import chatHistoryRoutes,chatRoutes,Router
 
 app = FastAPI()
 
@@ -16,7 +16,10 @@ app.add_middleware(
 # Include API routes
 app.include_router(chatHistoryRoutes.router, prefix="/chatHistory")
 app.include_router(chatRoutes.router, prefix="/chats")
+app.include_router(Router.router)
+
 
 @app.get("/")
 async def root():
     return {"message": "System is running"}
+
