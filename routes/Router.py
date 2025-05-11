@@ -1,5 +1,6 @@
-from fastapi import APIRouter
+from fastapi import APIRouter,File, UploadFile, Form
 from Controllers.Controller import updateSessionName,deleteSession,addMessage,addSession
+from Controllers.FileController import addDocument
 from models.session import Session
 from database.db import message_collection
 from database.db import session_collection
@@ -22,8 +23,8 @@ async def add_Message(sessionId:str,content:str):
     return await addMessage(sessionId,content)
 
 @router.post('/')
-async def add_Session(content:str):
-    return await addSession(content)
+async def add_Session(content:str,userId:str):
+    return await addSession(content,userId)
 
 
 @router.put("/updateSessionName")
@@ -66,10 +67,15 @@ async def generate_session_title_route(sessionId: str):
             }
 
 
-@router.get("/getAllSessions")
-async def fetch_Sessions():
-    sessions_cursor = session_collection.find()
+@router.get("/getAllSessions{userId}")
+async def fetch_Sessions(userId:str):
+    sessions_cursor = session_collection.find({"userId":userId})
     sessions = await sessions_cursor.to_list(length=None)
     return getAllSessions(sessions)
+
+
+@router.post("/addFile")
+async def add_file(file: UploadFile = File(...), doc_name: str = Form(...)):
+    return await addDocument(file,doc_name)
 
 

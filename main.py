@@ -1,7 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from routes import chatHistoryRoutes,chatRoutes,Router
-from schemas.sessionschema import getFirstMessageBySessionId
 
 app = FastAPI()
 

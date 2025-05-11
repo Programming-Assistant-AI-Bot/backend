@@ -11,8 +11,12 @@ client = AsyncIOMotorClient(DB_URL)
 Chatbot = client.Chatbot
 
 message_collection = Chatbot.get_collection("Messages")
+
 session_collection = Chatbot.get_collection("sessions")
 session_collection.create_index("sessionId",unique=True)
+
+file_collection = Chatbot.get_collection("files")
+file_collection.create_index("fileId",unique=True)
 
 try:
     client.admin.command("ping")

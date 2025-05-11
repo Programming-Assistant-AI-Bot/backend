@@ -34,14 +34,26 @@ async def getFirstMessageBySessionId(session_id: str):
 
 #Sessions
 # Convert a single session document to dictionary
-def getIndividualSession(session) -> dict:
+# def getIndividualSession(session) -> dict:
+#     return {
+#         "id": str(session["_id"]),
+#         "sessionId": session["sessionId"],
+#         "sessionName": session["sessionName"],
+#         "createdAt": session["createdAt"],
+#         "updatedAt": session["updatedAt"]
+#     }
+
+def getIndividualSession(session: dict) -> dict:
     return {
-        "id": str(session["_id"]),
-        "sessionId": session["sessionId"],
-        "sessionName": session["sessionName"],
-        "createdAt": session["createdAt"],
-        "updatedAt": session["updatedAt"]
+        "id": str(session.get("_id", "")),
+        "sessionId": session.get("sessionId", ""),
+        "sessionName": session.get("sessionName", ""),
+        "userId": str(session.get("userId", "")),
+        "createdAt": session.get("createdAt"),
+        "updatedAt": session.get("updatedAt"),
     }
+
+
 
 # Convert a list of session documents to a list of dictionaries
 def getAllSessions(sessions) -> list:

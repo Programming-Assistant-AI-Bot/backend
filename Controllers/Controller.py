@@ -39,13 +39,14 @@ async def generateNewSessionId() -> str:
 
 
 
-async def addSession(content: str):
+async def addSession(content: str,userId:str):
     session_Id = await generateNewSessionId()
     title=getTitleFromContent(content)
     now = datetime.utcnow()
     session_data = Session(
         sessionId=session_Id,
         sessionName=generate_session_title(content),
+        userId=userId,
         createdAt=now,
         updatedAt=now
     )
