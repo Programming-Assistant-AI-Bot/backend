@@ -54,11 +54,6 @@ def getIndividualSession(session: dict) -> dict:
     }
 
 
-
 # Convert a list of session documents to a list of dictionaries
 def getAllSessions(sessions) -> list:
     return [getIndividualSession(session) for session in sessions]
-
-
-
-

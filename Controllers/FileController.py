@@ -88,5 +88,6 @@ async def addDocument(file: UploadFile = File(...), doc_name: str = Form(...)):
             status_code=500,
             detail=f"Database insertion failed: {str(e)}"
         )
-    
+
+
     
