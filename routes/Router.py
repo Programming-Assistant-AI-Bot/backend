@@ -1,6 +1,7 @@
 from fastapi import APIRouter,File, UploadFile, Form
 from Controllers.Controller import updateSessionName,deleteSession,addMessage,addSession
 from Controllers.FileController import addDocument
+from Controllers.UrlController import validateUrl,validateGithubUrl
 from models.session import Session
 from database.db import message_collection
 from database.db import session_collection
@@ -8,6 +9,7 @@ from schemas.sessionschema import getFirstMessageBySessionId
 from utils.gemini import generate_session_title
 from datetime import datetime
 from schemas.sessionschema import getAllSessions
+from models.url import UrlInput
 
 
 router=APIRouter(prefix="/session",tags=["session"])
@@ -78,4 +80,11 @@ async def fetch_Sessions(userId:str):
 async def add_file(file: UploadFile = File(...), doc_name: str = Form(...)):
     return await addDocument(file,doc_name)
 
+@router.post("/validateWebUrl")
+async def validate_web_url(data: UrlInput):
+    return await validateUrl(data)
 
+@router.post("/validateGithubUrl")
+async def validate_github_url(data: UrlInput):  # assuming UrlInput has a `link: HttpUrl` field
+    result = await validateGithubUrl(str(data.link))
+    return result
