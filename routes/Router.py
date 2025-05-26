@@ -84,7 +84,7 @@ async def add_file(file: UploadFile = File(...), doc_name: str = Form(...)):
 async def validate_web_url(data: UrlInput):
     return await validateUrl(data)
 
-@router.post("/validate-github-url")
+@router.post("/validateGithubUrl")
 async def validate_github_url(data: UrlInput):  # assuming UrlInput has a `link: HttpUrl` field
     result = await validateGithubUrl(str(data.link))
     return result
