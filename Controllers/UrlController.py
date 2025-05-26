@@ -65,6 +65,7 @@ from models.url import UrlInput
 
 async def validateUrl(data: UrlInput):
     url = str(data.link)  # This is already syntactically valid thanks to HttpUrl
+    print(url)
 
     try:
         async with httpx.AsyncClient(timeout=5.0) as client:
@@ -76,22 +77,28 @@ async def validateUrl(data: UrlInput):
 
         if response.status_code < 400:
             return {
-                "message": " The URL is valid and reachable.",
+                "valid": True,  # Add this
+                "message": "The URL is valid and reachable.",
                 "status_code": response.status_code,
                 "url": url
             }
         else:
             return {
-                "message": " URL exists but returned an error.",
+                "valid": False,  # Add this
+                "message": "URL exists but returned an error.",
                 "status_code": response.status_code,
                 "url": url
             }
-
     except httpx.RequestError:
         return {
-            "message": " The URL is syntactically valid, but not reachable.",
+            "valid": False,  # Add this
+            "message": "The URL is valid but not reachable.",
             "url": url
         }
+        
+        
+        
+        
 
 # Updated regex pattern to handle .git suffix and http/https
 GITHUB_REPO_REGEX = r"^https?://github\.com/([^/]+)/([^/]+?)(?:\.git)?/?$"

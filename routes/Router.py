@@ -80,9 +80,13 @@ async def fetch_Sessions(userId:str):
 async def add_file(file: UploadFile = File(...), doc_name: str = Form(...)):
     return await addDocument(file,doc_name)
 
+
+
 @router.post("/validateWebUrl")
 async def validate_web_url(data: UrlInput):
     return await validateUrl(data)
+
+
 
 @router.post("/validateGithubUrl")
 async def validate_github_url(data: UrlInput):  # assuming UrlInput has a `link: HttpUrl` field
