@@ -4,7 +4,7 @@ from motor.motor_asyncio import AsyncIOMotorClient
 
 load_dotenv()
 
-DB_URL = os.getenv("URL")
+DB_URL = os.getenv("DB_URL")
 
 client = AsyncIOMotorClient(DB_URL)
 

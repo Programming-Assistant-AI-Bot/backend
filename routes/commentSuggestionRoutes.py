@@ -3,43 +3,78 @@ from schemas.context import (CommentCodeRequest, CommentCodeResponse)
 from langchain_groq import ChatGroq
 from langchain.prompts import ( ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate)
 from langchain_core.output_parsers import StrOutputParser
+from langchain_ollama import OllamaLLM
 import os
 from dotenv import load_dotenv
+import re
 load_dotenv()
 
-groq_api_key = os.getenv("GROQ_API_KEY")
-llm = ChatGroq(model="llama-3.3-70b-versatile",groq_api_key=groq_api_key)
+
+def clean_code_from_markdown(text):
+    # Look for code blocks anywhere in the text
+    code_block_pattern = r'```([\w-]*)?(?:\s+)?([\s\S]*?)```'
+    matches = re.findall(code_block_pattern, text, re.DOTALL)
+    
+    # If we found code blocks, return the content of the first one
+    if matches:
+        # matches will be a list of tuples: [(language, content), ...]
+        language, content = matches[0]
+        
+        # Strip only trailing whitespace and leading/trailing blank lines
+        lines = content.rstrip().split('\n')
+        
+        # Remove leading empty lines
+        while lines and not lines[0].strip():
+            lines.pop(0)
+            
+        # Remove trailing empty lines
+        while lines and not lines[-1].strip():
+            lines.pop()
+            
+        # Join the lines back together, preserving indentation
+        if lines:
+            return '\n'.join(lines)
+        return ''
+    
+    # If no code blocks found, return original without trimming leading whitespace
+    return text.rstrip()
+
+llm = OllamaLLM(model="qwen2.5-coder:3b")
 
 parser = StrOutputParser()
 
 prompt = ChatPromptTemplate.from_messages([
     SystemMessagePromptTemplate.from_template(
-        "You are a Perl programming expert assistant that generates contextually relevant code. "
-        "Your task is to generate Perl code that fits seamlessly within the existing codebase. "
-        "Consider the following project context when generating code:\n\n"
-        "Project Structure:\n{projectStructure}\n\n"
-        "Current File: {fileName}\n\n"
-        "Code Prefix (code before cursor):\n```perl\n{codePrefix}\n```\n\n"
-        "Code Suffix (code after cursor):\n```perl\n{codeSuffix}\n```\n\n"
-        "Current Block: {currentBlock}\n\n"
-        "Imported Modules: {imports}\n\n"
-        "Used Modules: {usedModules}\n\n"
-        "Variable Definitions: {variableDefinitions}\n\n"
-        "Related Code Structures:\n{relatedCodeStructures}\n\n"
-        "Import Definitions:\n{importDefinitions}\n\n"
-        "IMPORTANT GUIDELINES:\n"
-        "1. Only output raw Perl code (no markdown, no explanations)\n" 
-        "2. Ensure code is compatible with the imported modules\n"
-        "3. Follow Perl best practices and maintain consistent style with existing code\n"
-        "4. Use existing functions and variables when appropriate\n"
-        "5. Respect the current block scope\n"
-        "6. If implementing a new function, ensure it follows existing patterns\n"
-        "7. Consider performance, readability, and maintainability\n"
+        "You are an expert Perl developer generating contextually appropriate code. Output only raw Perl code without any formatting, markdown, or explanations.\n\n"
+        "Project Context:\n"
+        "- File: {fileName}\n"
+        "- Structure: {projectStructure}\n"
+        "- Current block: {currentBlock}\n"
+        "- Code before cursor:{codePrefix}\n"
+        "- Code after cursor:{codeSuffix}\n\n"
+        "Available Resources:\n"
+        "- Imported modules: {imports}\n"
+        "- Used modules: {usedModules}\n"
+        "- Defined variables:{variableDefinitions}\n"
+        "- Related code structures:{relatedCodeStructures}\n"
+        "- Import definitions:{importDefinitions}\n\n"
+        "Instructions:\n"
+        "1. Generate ONLY executable Perl code that can be inserted directly at the cursor position\n"
+        "2. Use existing variables, functions, and modules when appropriate\n"
+        "3. Match the project's code style and indentation.Strictly follow indentation\n"
+        "4. Do not output markdown code fences, comments, or explanations\n"
+        "5. Do not repeat imports already present\n"
+        "6. Always generate some functional code even if the request is ambiguous\n"
+        "7. If generating a function that exists in related code, use its signature and behavior as reference\n"
+        "8. Use the provided context as reference for generating code and strictly follow indentation\n"
+        "RESPONSE FORMAT:\n"
+        "Only the exact code to insert, using existing indentation from prefix/suffix.Generate code at any cost"
     ),
     HumanMessagePromptTemplate.from_template(
-        "User comment:\n{question}\n\nGenerate appropriate Perl code."
+        "User request:\n{question}\n\nGenerate the Perl code snippet."
     ),
 ])
+
 
 chain = prompt | llm | parser
 
@@ -66,6 +101,13 @@ async def generateSuggestion(request: CommentCodeRequest):
                 "question": request.message,
             }
         )
+        print(request.message)
+
+        print(result)
+
+        # Clean the code properly
+        result = clean_code_from_markdown(result)
+        print (result)
     except Exception as e:
         # Log or handle the error as needed
         raise HTTPException(status_code=500, detail=f"LLM generation failed: {e}")
