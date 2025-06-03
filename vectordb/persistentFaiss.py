@@ -77,3 +77,58 @@ class PersistentSessionStorage:
             self.create_session(session_id, initial_documents)
             db = self.get_session_db(session_id)
         return db
+    
+    def remove_documents_by_metadata(self, session_id, metadata_filter):
+        """Remove documents from session based on metadata filter."""
+        if not self.session_exists(session_id):
+            return False
+        
+        try:
+            db = self.get_session_db(session_id)
+            
+            # Get all documents with their IDs
+            docs_and_scores = db.similarity_search_with_score("", k=10000)  # Get all docs
+            
+            # Find documents that match the filter
+            docs_to_remove = []
+            ids_to_remove = []
+            
+            for i, (doc, score) in enumerate(docs_and_scores):
+                # Check if document matches the filter criteria
+                should_remove = True
+                for key, value in metadata_filter.items():
+                    if doc.metadata.get(key) != value:
+                        should_remove = False
+                        break
+                
+                if should_remove:
+                    docs_to_remove.append(doc)
+                    ids_to_remove.append(str(i))  # FAISS uses string IDs
+            
+            if ids_to_remove:
+                # Remove documents by recreating the index without them
+                remaining_docs = []
+                for i, (doc, score) in enumerate(docs_and_scores):
+                    if str(i) not in ids_to_remove:
+                        remaining_docs.append(doc)
+                
+                # Recreate the FAISS index with remaining documents
+                if remaining_docs:
+                    new_db = FAISS.from_documents(remaining_docs, self.embeddings)
+                else:
+                    # If no documents remain, create with dummy document
+                    dummy_doc = Document(page_content="[DUMMY INIT]", metadata={"init": True})
+                    new_db = FAISS.from_documents([dummy_doc], self.embeddings)
+                
+                # Save the updated index
+                new_db.save_local(self.get_session_path(session_id))
+                
+            return len(ids_to_remove)
+            
+        except Exception as e:
+            print(f"Error removing documents: {e}")
+            return False
+    
+    def remove_documents_by_file_id(self, session_id, file_id):
+        """Remove all documents associated with a specific file ID."""
+        return self.remove_documents_by_metadata(session_id, {"file_id": file_id})

@@ -3,6 +3,7 @@ from langchain.text_splitter import Language
 from langchain.text_splitter import RecursiveCharacterTextSplitter
 import tempfile, time, shutil, os, stat
 import gc
+import httpx
 
 from enum import Enum
 
@@ -46,14 +47,50 @@ def handle_remove_readonly(func, path, exc_info):
     else:
         raise
 
-def get_split_chunks_from_github(clone_url: str, branch: str = "main") -> list:
+async def get_default_branch(clone_url: str) -> str:
+    """
+    Detect the default branch of a GitHub repository by checking the API.
+    Falls back to 'main' if detection fails.
+    """
+    try:
+        # Extract owner/repo from GitHub URL
+        import re
+        match = re.match(r"https?://github\.com/([^/]+)/([^/]+?)(?:\.git)?/?$", clone_url)
+        if not match:
+            return "main"  # Default fallback
+        
+        owner, repo = match.group(1), match.group(2)
+        api_url = f"https://api.github.com/repos/{owner}/{repo}"
+        
+        async with httpx.AsyncClient(timeout=5.0) as client:
+            response = await client.get(api_url)
+            if response.status_code == 200:
+                data = response.json()
+                return data.get("default_branch", "main")
+    except Exception as e:
+        print(f"Could not detect default branch: {e}")
+    
+    return "main"  # Fallback
+
+def get_split_chunks_from_github(clone_url: str, branch: str = None) -> list:
     
     temp_dir = tempfile.mkdtemp()
     print(f"Temporary directory created at: {temp_dir}")
     
     documents = []
+    
+    # If no branch specified, try to detect the default branch
+    if branch is None:
+        try:
+            import asyncio
+            branch = asyncio.run(get_default_branch(clone_url))
+            print(f"Detected default branch: {branch}")
+        except Exception as e:
+            print(f"Failed to detect branch, using 'main': {e}")
+            branch = "main"
+    
     try:
-        # Initialize GitLoader with a file_filter to pick only .pl and .md files.
+        # Initialize GitLoader with a file_filter to pick only specified file types.
         loader = GitLoader(
             clone_url=clone_url,
             repo_path=temp_dir,
@@ -68,12 +105,34 @@ def get_split_chunks_from_github(clone_url: str, branch: str = "main") -> list:
         gc.collect()
 
     except Exception as e:
-        print(f"Error loading documents: {e}")
+        print(f"Error loading documents with branch '{branch}': {e}")
+        
+        # If the detected/specified branch fails, try the other common default branch
+        if branch == "main":
+            fallback_branch = "master"
+        else:
+            fallback_branch = "main"
+        
+        print(f"Trying fallback branch: {fallback_branch}")
+        try:
+            loader = GitLoader(
+                clone_url=clone_url,
+                repo_path=temp_dir,
+                branch=fallback_branch,
+                file_filter=lambda file_path: file_path.lower().endswith((".pl", ".pm", ".t", ".pod", ".psgi", ".cgi", ".md"))
+            )
+            documents = loader.load()
+            print(f"Loaded {len(documents)} documents from the repository using fallback branch.")
+            loader = None
+            gc.collect()
+        except Exception as fallback_error:
+            print(f"Error loading documents with fallback branch '{fallback_branch}': {fallback_error}")
+            
     finally:
         # Allow time to release file handles before deletion.
         time.sleep(2)
         try:
-            shutil.rmtree(temp_dir, onexc=handle_remove_readonly)
+            shutil.rmtree(temp_dir, onerror=handle_remove_readonly)
             print("Temporary directory deleted.")
         except Exception as e:
             print(f"Warning: Could not delete temporary directory: {e}")
