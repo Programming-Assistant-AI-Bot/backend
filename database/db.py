@@ -6,6 +6,7 @@ load_dotenv()
 
 DB_URL = os.getenv("DB_URL")
 
+
 client = AsyncIOMotorClient(DB_URL)
 
 Chatbot = client.Chatbot

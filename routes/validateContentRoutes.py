@@ -3,7 +3,7 @@ from schemas.url import UrlInput
 from Controllers.UrlController import validateUrl,validateGithubUrl
 from Controllers.FileController import addDocument
 
-router = APIRouter()
+router = APIRouter(prefix="/Contents",tags=["content"])
 
 @router.post("/addFile")
 async def add_file(file: UploadFile = File(...), doc_name: str = Form(...)):

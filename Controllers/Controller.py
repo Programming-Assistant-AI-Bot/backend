@@ -4,6 +4,8 @@ from models.chatMessages import Message
 from fastapi import HTTPException
 from datetime import datetime
 from utils.gemini import generate_session_title
+from bson import ObjectId
+
 
 
 
@@ -60,24 +62,40 @@ async def addSession(content: str,userId:str):
 
 
     
-async def updateSessionName(sessionId:str, newName:str):
+async def updateSessionName(sessionId: str, newName: str):
+    # Convert string to ObjectId, or return 400 if invalid format
+    try:
+        obj_id = ObjectId(sessionId)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid session ID format")
+
     result = await session_collection.update_one(
-        {"sessionId": sessionId},
-        {"$set": {"sessionName": newName,
-                  "updatedAt":datetime.utcnow()
-                }
+        { "_id": obj_id },  # filter by _id, not "sessionId"
+        {
+            "$set": {
+                "sessionName": newName,
+                "updatedAt": datetime.utcnow()
+            }
         }
     )
     if result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Session not found or name unchanged")
+
+    return { "message": "Session name updated" }
     
 
 
 
-async def deleteSession(sessionId:str):
-    result = await session_collection.delete_one({"sessionId":sessionId})
-    if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Session not found or name unchanged")
-    await message_collection.delete_many({"sessionId":sessionId})
+async def deleteSession(sessionId: str):
+    try:
+        obj_id = ObjectId(sessionId)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid session ID format")
 
+    result = await session_collection.delete_one({"_id": obj_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+    # Delete all messages related to this session
+    await message_collection.delete_many({"sessionId": obj_id})
 

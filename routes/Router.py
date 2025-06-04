@@ -27,7 +27,7 @@ async def add_Session(content:str,userId:str):
     return await addSession(content,userId)
 
 
-@router.put("/updateSessionName")
+@router.put("/rename/{sessionId}/{newName}")
 async def rename_Session(sessionId: str, newName: str):
     return await updateSessionName(sessionId, newName)
 
@@ -67,9 +67,9 @@ async def generate_session_title_route(sessionId: str):
             }
 
 
-@router.get("/getAllSessions{userId}")
-async def fetch_Sessions(userId:str):
-    sessions_cursor = session_collection.find({"userId":userId})
+@router.get("/getAllSessions")
+async def fetch_Sessions():
+    sessions_cursor = session_collection.find()
     sessions = await sessions_cursor.to_list(length=None)
     return getAllSessions(sessions)
 
