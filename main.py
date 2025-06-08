@@ -1,17 +1,20 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routes import chatHistoryRoutes,chatRoutes, commentSuggestionRoutes, Router,validateContentRoutes
+from routes import auth_routes, chatHistoryRoutes, chatRoutes, commentSuggestionRoutes, Router,validateContentRoutes
 
 app = FastAPI()
 
-# Allow frontend access
+# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=["http://localhost:5173"],  # Or ["*"] for all
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Include your auth routes with prefix
+app.include_router(auth_routes.router, prefix="/auth", tags=["Authentication"])
 
 # Include API routes
 app.include_router(chatHistoryRoutes.router, prefix="/chatHistory")
