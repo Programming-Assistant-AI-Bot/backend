@@ -1,4 +1,4 @@
-from fastapi import APIRouter,File, UploadFile, Form
+from fastapi import APIRouter,File, UploadFile, Form,HTTPException
 from Controllers.Controller import updateSessionName,deleteSession,addMessage,addSession
 from Controllers.UrlController import validateUrl,validateGithubUrl
 from models.session import Session
@@ -8,14 +8,14 @@ from schemas.sessionschema import getFirstMessageBySessionId
 from utils.gemini import generate_session_title
 from datetime import datetime
 from schemas.sessionschema import getAllSessions
+import uuid
+from pydantic import BaseModel
+from utils.gemini import getResponse
+
 
 
 router=APIRouter(prefix="/session",tags=["session"])
 
-
-@router.get("/getFirstQuery{sessionId}")
-async def fetch_First_User_Message(sessionId: str):
-    return await getFirstMessageBySessionId(sessionId)
 
 
 @router.post("/addMessage/{sessionId}")
@@ -65,6 +65,72 @@ async def generate_session_title_route(sessionId: str):
             "createdAt":now,
             "updatedAt":now,
             }
+
+@router.get("/getFirstQuery{sessionId}")
+async def fetch_First_User_Message(sessionId: str):
+    return await getFirstMessageBySessionId(sessionId)
+
+
+class QueryInput(BaseModel):
+    query: str
+    
+@router.post("/createSession")
+async def create_session(payload: QueryInput):
+    query = payload.query
+    
+    try:
+        # Generate a unique session ID
+        session_id = str(uuid.uuid4())
+        
+        # Generate session title from the query
+        session_name = generate_session_title(query)
+        
+        # Current timestamp
+        now = datetime.utcnow()
+        
+        # Create session data
+        session_data = {
+            "sessionId": session_id,
+            "sessionName": session_name,
+            "createdAt": now,
+            "updatedAt": now
+        }
+        
+        # Insert session into collection
+        result = await session_collection.insert_one(session_data)
+        
+        # Store the first query as a message
+        message_data = {
+            "sessionId": session_id,
+            "role": "user",
+            "content": query,
+            "timestamp": now
+        }
+        await message_collection.insert_one(message_data)
+        
+        return {
+            "id": str(result.inserted_id),
+            "sessionId": session_id,
+            "sessionName": session_name,
+            "createdAt": now,
+            "updatedAt": now
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create session: {str(e)}")
+
+
+# Define the input payload schema
+class GeminiRequest(BaseModel):
+    text: str
+
+@router.post("/getResponseFromGemini")
+async def getResponseFromGemini(payload: GeminiRequest):
+    try:
+        response = getResponse(payload.text)
+        return {"response": response}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 
 
 @router.get("/getAllSessions")
