@@ -11,7 +11,6 @@ from langchain.chains import create_history_aware_retriever, create_retrieval_ch
 from langchain_core.runnables import RunnablePassthrough
 from langchain_core.runnables.history import RunnableWithMessageHistory
 
-
 from vectordb.persistentFaiss import PersistentSessionStorage
 from services.chatHistory.mongoClassHistory import LimitedMongoDBChatMessageHistory
 
@@ -39,8 +38,13 @@ storage = PersistentSessionStorage(base_directory="./session_storage")
 
 # —— LLM & Parser ——
 # Enable streaming on the OllamaLLM
-llm = OllamaLLM(model="qwen2.5-coder:3b", streaming=True)
+llm = OllamaLLM(
+    model="qwen2.5-coder:3b",
+    streaming=True,
+    model_kwargs={"num_ctx": 32768}
+)
 parser = StrOutputParser()
+
 
 # —— Prompt Templates ——
 SYSTEM_TEXT = (
@@ -80,7 +84,7 @@ CONTEXTUALIZE_PROMPT = ChatPromptTemplate.from_messages([
 
 # Trimmer to keep token count within limits
 TRIMMER = trim_messages(
-    max_tokens=500,
+    max_tokens=3000,
     strategy="last",
     token_counter=llm,
     include_system=True,
