@@ -100,13 +100,9 @@ async def create_session(payload: QueryInput):
         result = await session_collection.insert_one(session_data)
         
         # Store the first query as a message
-        message_data = {
-            "sessionId": session_id,
-            "role": "user",
-            "content": query,
-            "timestamp": now
-        }
-        await message_collection.insert_one(message_data)
+       
+        await addMessage(session_id,query,"user")
+        
         
         return {
             "id": str(result.inserted_id),

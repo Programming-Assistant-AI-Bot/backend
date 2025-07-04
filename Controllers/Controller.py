@@ -8,15 +8,17 @@ from bson import ObjectId
 
 
 
-
-async def addMessage(sessionId: str, content: str):
-    message_data = Message(
-        sessionId=sessionId,
-        content=content,
-        role="user",
-        timestamp= datetime.utcnow()
-    )
-    result = await message_collection.insert_one(message_data.dict())
+async def addMessage(sessionId: str, content: str,role:str):
+    
+    now = datetime.utcnow()
+    message_data = {
+            "sessionId": sessionId,
+            "role": role,
+            "content": content,
+            "timestamp": now
+        }
+    result =await message_collection.insert_one(message_data)
+    print(message_data)
     return {"id": str(result.inserted_id)}
 
 
@@ -53,7 +55,7 @@ async def addSession(content: str,userId:str):
         updatedAt=now
     )
     await session_collection.insert_one(session_data.dict())
-    await addMessage(session_Id, content)
+    await addMessage(session_Id, content,"user")
     return{
         "sessionId": session_Id,
         "sessionName": title,
