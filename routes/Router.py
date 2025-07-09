@@ -1,30 +1,21 @@
 from fastapi import APIRouter,File, UploadFile, Form,HTTPException
 from Controllers.Controller import updateSessionName,deleteSession,addMessage,addSession
 from Controllers.UrlController import validateUrl,validateGithubUrl
+from services.chatHistory.llm import make_conversational_chain
 from models.session import Session
-from database.db import message_collection
-from database.db import session_collection
-from schemas.sessionschema import getFirstMessageBySessionId
+from database.db import message_collection, session_collection
+from schemas.sessionschema import getFirstMessageBySessionId, getAllSessions
 from utils.gemini import generate_session_title
 from datetime import datetime
-from schemas.sessionschema import getAllSessions
 import uuid
 from pydantic import BaseModel
-from utils.gemini import getResponse
+
+
 
 
 
 router=APIRouter(prefix="/session",tags=["session"])
 
-
-
-@router.post("/addMessage/{sessionId}")
-async def add_Message(sessionId:str,content:str):
-    return await addMessage(sessionId,content)
-
-@router.post('/')
-async def add_Session(content:str,userId:str):
-    return await addSession(content,userId)
 
 
 @router.put("/rename/{sessionId}/{newName}")
@@ -37,53 +28,17 @@ async def delete_Session(sessionId:str):
     return await deleteSession(sessionId)
 
 
-@router.post("/generateSessionTitle/{sessionId}")
-async def generate_session_title_route(sessionId: str):
-    # Step 1: Get first user message for the session
-    firstMessage = await getFirstMessageBySessionId(sessionId)
-    
-    if "error" in firstMessage:
-        return firstMessage
-    
-    query = firstMessage["content"]
-
-    # Step 2: Generate session title from the query
-    title = generate_session_title(query)
-
-    # Step 3: Insert into session_collection
-    now = datetime.utcnow()
-    sessionData = {
-        "sessionId": sessionId,
-        "sessionName": title,
-        "createdAt":now,
-        "updatedAt":now
-    }
-
-    result = await session_collection.insert_one(sessionData)
-    return {"id": str(result.inserted_id), 
-            "sessionName": title,
-            "createdAt":now,
-            "updatedAt":now,
-            }
-
-@router.get("/getFirstQuery{sessionId}")
-async def fetch_First_User_Message(sessionId: str):
-    return await getFirstMessageBySessionId(sessionId)
-
-
 class QueryInput(BaseModel):
     query: str
     
 @router.post("/createSession")
-async def create_session(payload: QueryInput):
-    query = payload.query
-    
+async def create_session(input: QueryInput):
     try:
         # Generate a unique session ID
         session_id = str(uuid.uuid4())
         
         # Generate session title from the query
-        session_name = generate_session_title(query)
+        session_name = generate_session_title(input.query)
         
         # Current timestamp
         now = datetime.utcnow()
@@ -99,10 +54,19 @@ async def create_session(payload: QueryInput):
         # Insert session into collection
         result = await session_collection.insert_one(session_data)
         
-        # Store the first query as a message
-       
-        await addMessage(session_id,query,"user")
+     
         
+        # Generate and save assistant response
+        chain = make_conversational_chain(session_id=session_id)
+        assistant_response = ""
+        async for chunk in chain.astream(
+            {"input": input.query},
+            config={"configurable": {"session_id": session_id}}
+        ):
+            if isinstance(chunk, dict) and 'answer' in chunk:
+                assistant_response += chunk['answer']
+        
+
         
         return {
             "id": str(result.inserted_id),
@@ -113,21 +77,6 @@ async def create_session(payload: QueryInput):
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Failed to create session: {str(e)}")
-
-
-# Define the input payload schema
-class GeminiRequest(BaseModel):
-    text: str
-
-@router.post("/getResponseFromGemini")
-async def getResponseFromGemini(payload: GeminiRequest):
-    try:
-        response = getResponse(payload.text)
-        return {"response": response}
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
 
 @router.get("/getAllSessions")
 async def fetch_Sessions():

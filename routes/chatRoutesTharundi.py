@@ -6,14 +6,16 @@ from models.chatMessages import Message
 from datetime import datetime
 import json
 from database.db import message_collection,session_collection
-from Controllers.Controller import addMessage
+from Controllers.Controller import addMessage,updateSessionName
 from bson import ObjectId
+from utils.gemini import generate_session_title
+from schemas.sessionschema import getFirstMessageBySessionId
 
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 
-async def getSessionId(object_id: str):
+async def getSessionObjToId(object_id: str):
     try:
         obj_id = ObjectId(object_id)  # Validate and convert to ObjectId
         session_data = await session_collection.find_one({"_id": obj_id})
@@ -26,33 +28,8 @@ async def getSessionId(object_id: str):
         raise ValueError(f"Error retrieving session: {str(e)}")
 
 
-
-async def addMessage(sessionId: str, content: str, role: str):
-    try:
-        now = datetime.utcnow()
-        message_data = {
-            "sessionId": sessionId,  # Store as string, consistent with Message model
-            "role": role,
-            "content": content,
-            "timestamp": now
-        }
-        result = await message_collection.insert_one(message_data)
-        print(f"Inserted message: {message_data}, ID: {result.inserted_id}")
-        return {"id": str(result.inserted_id)}
-    except Exception as e:
-        print(f"Failed to insert message: {message_data}, Error: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to save message: {str(e)}")
-
 @router.post("/{sessionId}")
 async def simple_stream_chat_response(sessionId: str, request: MessageRequest):
-    # Save the user's message to the session
-    savingSId = await getSessionId(sessionId)
-    try:
-        await addMessage(savingSId, request.message, "user")
-    except Exception as e:
-        print(f"Error saving user message: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Failed to save user message: {str(e)}")
-
     async def event_generator():
         try:
             chain = make_conversational_chain(session_id=sessionId)
@@ -69,12 +46,6 @@ async def simple_stream_chat_response(sessionId: str, request: MessageRequest):
                         json_data = json.dumps({"content": token, "formatted": True})
                         yield f"id: {counter}\nevent: message\ndata: {json_data}\n\n"
                         counter += 1
-            # Save the full assistant message
-            if assistant_full_message:
-                await addMessage(savingSId, assistant_full_message, "assistant")
-            else:
-                print("No assistant message to save.")
-
         except Exception as e:
             print(f"Error in streaming or saving assistant message: {str(e)}")
             yield f"event: error\ndata: {json.dumps({'error': str(e)})}\n\n"
