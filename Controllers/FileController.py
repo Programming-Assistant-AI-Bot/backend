@@ -64,17 +64,8 @@ async def addDocument(file: UploadFile = File(...), doc_name: str = Form(...), s
         
          # Add message with uploaded file information
         message_content = f"📄 {doc_name} (Uploaded)"
-        message_data = {
-            "content": message_content,
-            "attachment": {
-                "fileName": doc_name,
-                "fileId": file_id,
-                "status": "success",
-                "link": file_link,
-                "pageCount": page_count,
-                "fileType": "pdf"
-            }
-        }
+        message_data =  message_content,
+    
         
         await addMessage(session_id, message_data, "user")
 
@@ -83,14 +74,7 @@ async def addDocument(file: UploadFile = File(...), doc_name: str = Form(...), s
         
         # Add message with upload failure information
         message_content = f"📄 {doc_name} (Upload Failed)"
-        message_data = {
-            "content": message_content,
-            "attachment": {
-                "fileName": doc_name,
-                "status": "error",
-                "error": str(e)
-            }
-        }
+        message_data =  message_content,
         await addMessage(session_id, message_data, "user")
         raise HTTPException(
             status_code=500,
@@ -134,16 +118,7 @@ async def addDocument(file: UploadFile = File(...), doc_name: str = Form(...), s
         
             # Update message to show processing failure
         message_content = f"📄 {doc_name} (Processing Failed)"
-        message_data = {
-            "content": message_content,
-            "attachment": {
-                "fileName": doc_name,
-                "fileId": file_id,
-                "status": "error",
-                "link": file_link,
-                "error": f"Processing failed: {str(e)}"
-            }
-        }
+        message_data =  message_content,
         await addMessage(session_id, message_data, "user")    
         raise HTTPException(
             status_code=500,
@@ -170,19 +145,7 @@ async def addDocument(file: UploadFile = File(...), doc_name: str = Form(...), s
         
            # Update message to show successful vectorization
         message_content = f"📄 {doc_name} (Uploaded & Vectorized)"
-        message_data = {
-            "content": message_content,
-            "attachment": {
-                "fileName": doc_name,
-                "fileId": file_id,
-                "status": "success",
-                "link": file_link,
-                "pageCount": page_count,
-                "chunksCount": len(chunks),
-                "vectorized": True,
-                "mongoId": str(result.inserted_id)
-            }
-        }
+        message_data =  message_content,
         await addMessage(session_id, message_data, "user")
         return {
             "fileId": file_id,
@@ -221,14 +184,7 @@ async def addDocument(file: UploadFile = File(...), doc_name: str = Form(...), s
             
          # Update message to show database failure
         message_content = f"📄 {doc_name} (Database Error)"
-        message_data = {
-            "content": message_content,
-            "attachment": {
-                "fileName": doc_name,
-                "status": "error",
-                "error": f"Database insertion failed: {str(e)}"
-            }
-        }
+        message_data =  message_content,
         await addMessage(session_id, message_data, "user")    
             
         raise HTTPException(    
