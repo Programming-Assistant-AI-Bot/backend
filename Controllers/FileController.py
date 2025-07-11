@@ -9,6 +9,7 @@ import tempfile
 import os
 from database.db import file_collection
 import pymupdf as fitz
+from Controllers.Controller import addMessage
 
 # Add imports for PDF processing and vector storage
 from services.loaders.pdfLoader import get_split_chunks_from_pdf
@@ -60,8 +61,37 @@ async def addDocument(file: UploadFile = File(...), doc_name: str = Form(...), s
 
         file_id = drive_response["id"]
         file_link = f"https://drive.google.com/file/d/{file_id}/view"
+        
+         # Add message with uploaded file information
+        message_content = f"📄 {doc_name} (Uploaded)"
+        message_data = {
+            "content": message_content,
+            "attachment": {
+                "fileName": doc_name,
+                "fileId": file_id,
+                "status": "success",
+                "link": file_link,
+                "pageCount": page_count,
+                "fileType": "pdf"
+            }
+        }
+        
+        await addMessage(session_id, message_data, "user")
 
     except Exception as e:
+        
+        
+        # Add message with upload failure information
+        message_content = f"📄 {doc_name} (Upload Failed)"
+        message_data = {
+            "content": message_content,
+            "attachment": {
+                "fileName": doc_name,
+                "status": "error",
+                "error": str(e)
+            }
+        }
+        await addMessage(session_id, message_data, "user")
         raise HTTPException(
             status_code=500,
             detail=f"Google Drive upload failed: {str(e)}"
@@ -101,7 +131,20 @@ async def addDocument(file: UploadFile = File(...), doc_name: str = Form(...), s
             drive_service.files().delete(fileId=file_id).execute()
         except Exception as drive_error:
             print(f"Drive cleanup failed: {drive_error}")
-            
+        
+            # Update message to show processing failure
+        message_content = f"📄 {doc_name} (Processing Failed)"
+        message_data = {
+            "content": message_content,
+            "attachment": {
+                "fileName": doc_name,
+                "fileId": file_id,
+                "status": "error",
+                "link": file_link,
+                "error": f"Processing failed: {str(e)}"
+            }
+        }
+        await addMessage(session_id, message_data, "user")    
         raise HTTPException(
             status_code=500,
             detail=f"PDF processing failed: {str(e)}"
@@ -122,6 +165,25 @@ async def addDocument(file: UploadFile = File(...), doc_name: str = Form(...), s
     # Store in MongoDB
     try:
         result = await file_collection.insert_one(file_document)
+        
+        
+        
+           # Update message to show successful vectorization
+        message_content = f"📄 {doc_name} (Uploaded & Vectorized)"
+        message_data = {
+            "content": message_content,
+            "attachment": {
+                "fileName": doc_name,
+                "fileId": file_id,
+                "status": "success",
+                "link": file_link,
+                "pageCount": page_count,
+                "chunksCount": len(chunks),
+                "vectorized": True,
+                "mongoId": str(result.inserted_id)
+            }
+        }
+        await addMessage(session_id, message_data, "user")
         return {
             "fileId": file_id,
             "fileName": doc_name,
@@ -153,6 +215,21 @@ async def addDocument(file: UploadFile = File(...), doc_name: str = Form(...), s
         # Log cleanup errors if any
         if cleanup_errors:
             print(f"Cleanup errors: {'; '.join(cleanup_errors)}")
+            
+            
+            
+            
+         # Update message to show database failure
+        message_content = f"📄 {doc_name} (Database Error)"
+        message_data = {
+            "content": message_content,
+            "attachment": {
+                "fileName": doc_name,
+                "status": "error",
+                "error": f"Database insertion failed: {str(e)}"
+            }
+        }
+        await addMessage(session_id, message_data, "user")    
             
         raise HTTPException(    
             status_code=500,
