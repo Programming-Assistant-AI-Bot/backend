@@ -61,31 +61,23 @@ async def addSession(content: str,userId:str):
         "sessionName": title,
     }
 
-
-
-    
-async def updateSessionName(sessionId: str, newName: str):
-    # Convert string to ObjectId, or return 400 if invalid format
    
-
+async def updateSessionName(sessionId: str, newName: str):
     result = await session_collection.update_one(
-    {
-        "sessionId": sessionId,
-        "$or": [{"sessionName": {"$exists": False}}, {"sessionName": "New Session"}]
-    },
-    {
-        "$set": {
-            "sessionName": newName,
-            "updatedAt": datetime.utcnow()
-        }
-    }
-)
+            {"sessionId": sessionId},
+            {
+                "$set": {
+                    "sessionName": newName,
+                    "updatedAt": datetime.utcnow()
+                }
+            }
+        )
 
     if result.modified_count == 0:
-        raise HTTPException(status_code=404, detail="Session not found or name unchanged")
+            raise HTTPException(status_code=404, detail="Session not found or name unchanged")
 
-    return { "message": "Session name updated" }
-    
+    return {"message": "Session name updated"}
+
 
 
 
