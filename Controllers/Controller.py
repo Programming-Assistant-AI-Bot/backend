@@ -83,14 +83,21 @@ async def updateSessionName(sessionId: str, newName: str):
 
 async def deleteSession(sessionId: str):
     try:
-        obj_id = ObjectId(sessionId)
-    except Exception:
-        raise HTTPException(status_code=400, detail="Invalid session ID format")
+        result = await session_collection.delete_one({"sessionId": sessionId})
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Session not found")
 
-    result = await session_collection.delete_one({"_id": obj_id})
-    if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Session not found")
-
-    # Delete all messages related to this session
-    await message_collection.delete_many({"sessionId": obj_id})
+        # Delete all messages related to this session
+        await message_collection.delete_many({"sessionId": sessionId})
+        
+        return {"message": "Session and all related messages deleted successfully"}
+    
+    except HTTPException:
+        # Re-raise HTTP exceptions (like 404) as they are intentional
+        raise
+    except Exception as e:
+        # Log the error for debugging
+        print(f"Error deleting session {sessionId}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error while deleting session")
+    
 
