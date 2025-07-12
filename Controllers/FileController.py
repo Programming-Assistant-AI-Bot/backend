@@ -36,6 +36,7 @@ async def addDocument(file: UploadFile = File(...), doc_name: str = Form(...), s
     """Upload a document to Google Drive, process it, and store in vector database"""
     
     content = await file.read()
+    print(content)
     
     # Get PDF page count
     with fitz.open(filetype="pdf", stream=content) as doc:
@@ -64,8 +65,7 @@ async def addDocument(file: UploadFile = File(...), doc_name: str = Form(...), s
         
          # Add message with uploaded file information
         message_content = f"📄 {doc_name} (Uploaded)"
-        message_data =  message_content,
-    
+        message_data = message_content
         
         await addMessage(session_id, message_data, "user")
 
@@ -74,7 +74,7 @@ async def addDocument(file: UploadFile = File(...), doc_name: str = Form(...), s
         
         # Add message with upload failure information
         message_content = f"📄 {doc_name} (Upload Failed)"
-        message_data =  message_content,
+        message_data = message_content
         await addMessage(session_id, message_data, "user")
         raise HTTPException(
             status_code=500,
@@ -118,7 +118,7 @@ async def addDocument(file: UploadFile = File(...), doc_name: str = Form(...), s
         
             # Update message to show processing failure
         message_content = f"📄 {doc_name} (Processing Failed)"
-        message_data =  message_content,
+        message_data = message_content
         await addMessage(session_id, message_data, "user")    
         raise HTTPException(
             status_code=500,
@@ -145,7 +145,7 @@ async def addDocument(file: UploadFile = File(...), doc_name: str = Form(...), s
         
            # Update message to show successful vectorization
         message_content = f"📄 {doc_name} (Uploaded & Vectorized)"
-        message_data =  message_content,
+        message_data = message_content
         await addMessage(session_id, message_data, "user")
         return {
             "fileId": file_id,
@@ -184,7 +184,7 @@ async def addDocument(file: UploadFile = File(...), doc_name: str = Form(...), s
             
          # Update message to show database failure
         message_content = f"📄 {doc_name} (Database Error)"
-        message_data =  message_content,
+        message_data = message_content
         await addMessage(session_id, message_data, "user")    
             
         raise HTTPException(    
