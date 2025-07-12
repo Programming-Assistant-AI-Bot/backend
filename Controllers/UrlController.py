@@ -24,6 +24,8 @@ async def validateUrl(data: UrlInput):
         if response.status_code < 400:
             try:
                 chunks = get_split_chunks_from_url(url=url)
+                print("Validating URL sessionId: "+session_id)
+                print("validating URL chunks: "+str(chunks))
                 storage.add_documents_to_session(session_id=session_id, documents=chunks)
                 
                 return {

@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routes import auth_routes, chatHistoryRoutes, chatRoutes, commentSuggestionRoutes, Router,validateContentRoutes
+from routes import auth_routes, chatHistoryRoutes, chatRoutes, commentSuggestionRoutes, Router,validateContentRoutes,chatRoutesTharundi
 
 app = FastAPI()
 
@@ -22,6 +22,7 @@ app.include_router(chatRoutes.router, prefix="/chats")
 app.include_router(Router.router)
 app.include_router(commentSuggestionRoutes.router, prefix='/commentCode')
 app.include_router(validateContentRoutes.router, prefix="/validate")
+app.include_router(chatRoutesTharundi.router)
 
 
 @app.get("/")

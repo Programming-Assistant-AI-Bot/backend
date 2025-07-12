@@ -4,17 +4,21 @@ from models.chatMessages import Message
 from fastapi import HTTPException
 from datetime import datetime
 from utils.gemini import generate_session_title
+from bson import ObjectId
 
 
 
-async def addMessage(sessionId: str, content: str):
-    message_data = Message(
-        sessionId=sessionId,
-        content=content,
-        role="user",
-        timestamp= datetime.utcnow()
-    )
-    result = await message_collection.insert_one(message_data.dict())
+async def addMessage(sessionId: str, content: str,role:str):
+    
+    now = datetime.utcnow()
+    message_data = {
+            "sessionId": sessionId,
+            "role": role,
+            "content": content,
+            "timestamp": now
+        }
+    result =await message_collection.insert_one(message_data)
+    print(message_data)
     return {"id": str(result.inserted_id)}
 
 
@@ -51,7 +55,7 @@ async def addSession(content: str,userId:str):
         updatedAt=now
     )
     await session_collection.insert_one(session_data.dict())
-    await addMessage(session_Id, content)
+    await addMessage(session_Id, content,"user")
     return{
         "sessionId": session_Id,
         "sessionName": title,
@@ -60,24 +64,48 @@ async def addSession(content: str,userId:str):
 
 
     
-async def updateSessionName(sessionId:str, newName:str):
+async def updateSessionName(sessionId: str, newName: str):
+    # Convert string to ObjectId, or return 400 if invalid format
+   
+
     result = await session_collection.update_one(
-        {"sessionId": sessionId},
-        {"$set": {"sessionName": newName,
-                  "updatedAt":datetime.utcnow()
-                }
+    {
+        "sessionId": sessionId,
+        "$or": [{"sessionName": {"$exists": False}}, {"sessionName": "New Session"}]
+    },
+    {
+        "$set": {
+            "sessionName": newName,
+            "updatedAt": datetime.utcnow()
         }
-    )
+    }
+)
+
     if result.modified_count == 0:
         raise HTTPException(status_code=404, detail="Session not found or name unchanged")
+
+    return { "message": "Session name updated" }
     
 
 
 
-async def deleteSession(sessionId:str):
-    result = await session_collection.delete_one({"sessionId":sessionId})
-    if result.deleted_count == 0:
-        raise HTTPException(status_code=404, detail="Session not found or name unchanged")
-    await message_collection.delete_many({"sessionId":sessionId})
+async def deleteSession(sessionId: str):
+    try:
+        result = await session_collection.delete_one({"sessionId": sessionId})
+        if result.deleted_count == 0:
+            raise HTTPException(status_code=404, detail="Session not found")
 
+        # Delete all messages related to this session
+        await message_collection.delete_many({"sessionId": sessionId})
+        
+        return {"message": "Session and all related messages deleted successfully"}
+    
+    except HTTPException:
+        # Re-raise HTTP exceptions (like 404) as they are intentional
+        raise
+    except Exception as e:
+        # Log the error for debugging
+        print(f"Error deleting session {sessionId}: {str(e)}")
+        raise HTTPException(status_code=500, detail="Internal server error while deleting session")
+    
 

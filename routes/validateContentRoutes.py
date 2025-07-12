@@ -3,11 +3,11 @@ from schemas.url import UrlInput
 from Controllers.UrlController import validateUrl,validateGithubUrl
 from Controllers.FileController import addDocument
 
-router = APIRouter()
+router = APIRouter(prefix="/Contents",tags=["content"])
 
 @router.post("/addFile")
-async def add_file(file: UploadFile = File(...), doc_name: str = Form(...)):
-    return await addDocument(file,doc_name)
+async def add_file(file: UploadFile = File(...), doc_name: str = Form(...),session_id:str = Form(...)):
+    return await addDocument(file,doc_name,session_id)
 
 @router.post("/validateWebUrl")
 async def validate_web_url(data: UrlInput):
