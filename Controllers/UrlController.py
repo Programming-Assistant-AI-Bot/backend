@@ -4,12 +4,12 @@ from schemas.url import UrlInput
 from services.loaders.websiteLoader import get_split_chunks_from_url
 from services.loaders.gitRepoLoader import get_split_chunks_from_github
 from vectordb.persistentFaiss import PersistentSessionStorage
-
+from Controllers.Controller import addMessage
 # —— Per-session FAISS storage helper ——
 storage = PersistentSessionStorage(base_directory="./session_storage")
 
-async def validateUrl(data: UrlInput):
-    url = str(data.link)  # This is already syntactically valid thanks to HttpUrl
+async def validateUrl(data: UrlInput, user_id: str):
+    url = str(data.link)
     session_id = data.session_id
 
 
@@ -26,41 +26,51 @@ async def validateUrl(data: UrlInput):
                 chunks = get_split_chunks_from_url(url=url)
                 print("Validating URL sessionId: "+session_id)
                 print("validating URL chunks: "+str(chunks))
-                storage.add_documents_to_session(session_id=session_id, documents=chunks)
-                
+                storage.add_documents_to_session(
+                    user_id=user_id, 
+                    session_id=session_id, 
+                    documents=chunks
+                )  
+                await addMessage(session_id,f"[Website URL] {url}","user",user_id)
+
                 return {
-                    "message": "The URL is valid and reachable.",
+                    "valid": True,
+                    "reason": "The URL is valid and reachable.",
                     "status_code": response.status_code,
                     "url": url
                 }
             except Exception as e:
                 return {
-                    "message": f"URL is valid but failed to process content: {str(e)}",
+                    "valid":False,
+                    "reason": f"URL is valid but failed to process content: {str(e)}",
                     "status_code": response.status_code,
                     "url": url
                 }
         else:
             return {
-                "message": " URL exists but returned an error.",
+                "valid":False,
+                "reason": " URL exists but returned an error.",
                 "status_code": response.status_code,
                 "url": url
             }
 
     except httpx.RequestError:
         return {
-            "message": " The URL is syntactically valid, but not reachable.",
+            "valid":False,
+            "reason": " The URL is syntactically valid, but not reachable.",
             "url": url
         }
     except Exception as e:
         return {
-            "message": f"Unexpected error: {str(e)}",
+            "valid":False,
+            "reason": f"Unexpected error: {str(e)}",
             "url": url
         }
 
 # Updated regex pattern to handle .git suffix and http/https
 GITHUB_REPO_REGEX = r"^https?://github\.com/([^/]+)/([^/]+?)(?:\.git)?/?$"
 
-async def validateGithubUrl(url: str, session_id: str, token: str = None) -> dict:
+async def validateGithubUrl(url: str, session_id: str, user_id: str, token: str = None) -> dict:
     """
     Validate a GitHub repository URL and check if it's public or private.
     
@@ -103,7 +113,12 @@ async def validateGithubUrl(url: str, session_id: str, token: str = None) -> dic
                 # Repository is public, proceed with processing
                 try:
                     chunks = get_split_chunks_from_github(url)
-                    storage.add_documents_to_session(session_id=session_id, documents=chunks)
+                    storage.add_documents_to_session(
+                        user_id=user_id, 
+                        session_id=session_id, 
+                        documents=chunks
+                    )
+                    await addMessage(session_id,f"[Repository Link] {url}","user",user_id)
                     return {
                         "valid": True,
                         "reason": "Repository is public and has been processed successfully.",

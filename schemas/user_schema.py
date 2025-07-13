@@ -18,3 +18,6 @@ class UserResponse(BaseModel):
 class TokenResponse(BaseModel):
     access_token: str
     token_type: str = "bearer"
+    user_id: str  # Add user ID for direct reference
+    username: str  # Include username for display purposes
+    email: str  # Include email for user identification

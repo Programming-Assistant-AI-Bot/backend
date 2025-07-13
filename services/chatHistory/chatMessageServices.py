@@ -2,8 +2,9 @@ from database.db import message_collection ,session_collection
 from models.chatMessages import Message
 from bson import ObjectId
 import uuid
+from fastapi import HTTPException
 
-async def getMessage(sessionId: str):
+async def getMessage(sessionId: str, userId: str):
     try:
         session_filter = None
 
@@ -11,7 +12,7 @@ async def getMessage(sessionId: str):
         if len(sessionId) == 24:
             try:
                 obj_id = ObjectId(sessionId)
-                sess = await session_collection.find_one({"_id": obj_id})
+                sess = await session_collection.find_one({"_id": obj_id, "userId": userId})
                 if sess:
                     sessionId = sess["sessionId"]  # update to actual UUID string
                     session_filter = {"sessionId": sessionId}
@@ -22,6 +23,11 @@ async def getMessage(sessionId: str):
         if session_filter is None:
             try:
                 uuid_obj = uuid.UUID(sessionId)  # Validate format
+                # Check if the session belongs to this user
+                sess = await session_collection.find_one({"sessionId": str(uuid_obj), "userId": userId})
+                if not sess:
+                    raise HTTPException(status_code=403, detail="Access denied to this session")
+                    
                 session_filter = {"sessionId": str(uuid_obj)}
             except ValueError:
                 raise ValueError("Invalid sessionId format")
