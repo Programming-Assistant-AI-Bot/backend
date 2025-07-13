@@ -24,12 +24,13 @@ mongo_client = MongoClient(DB_URL)
 mongo_client.Chatbot.Messages.create_index([("sessionId", 1)])
 mongo_client.Chatbot.Messages.create_index([("sessionId", 1), ("_id", -1)])
 
-def get_session_history(session_id: str) -> BaseChatMessageHistory:
+def get_session_history(session_id: str, user_id: str) -> BaseChatMessageHistory:
     return LimitedMongoDBChatMessageHistory(
         connection_string=DB_URL,
         database_name="Chatbot",
         collection_name="Messages",
         session_id=session_id,
+        user_id=user_id,
         limit=20
     )
 
@@ -92,9 +93,9 @@ TRIMMER = trim_messages(
 )
 
 # —— Build & wrap the RAG chain inside a function ——  
-def make_conversational_chain(session_id: str):
-    # 1. Load or create the per-session FAISS vector store
-    faiss_db = storage.create_or_load(session_id)
+def make_conversational_chain(session_id: str, user_id: str):
+    # 1. Load or create the per-session FAISS vector store for this user
+    faiss_db = storage.create_or_load(user_id, session_id)
     retriever = faiss_db.as_retriever(search_type="mmr", kwargs={"k": 3})
 
     # 2. Wrap retriever to reformulate follow-ups
@@ -114,10 +115,12 @@ def make_conversational_chain(session_id: str):
     # 4. Combine into a RAG chain
     rag_chain = create_retrieval_chain(history_retriever, qa_chain)
 
-    # 5. Wrap with persistent chat history
+    # 5. Wrap with persistent chat history including user context
+    get_session_history_for_user = lambda session_id: get_session_history(session_id, user_id)
+    
     conversational = RunnableWithMessageHistory(
         rag_chain,
-        get_session_history,
+        get_session_history_for_user,
         input_messages_key="input",
         history_messages_key="chat_history",
         output_messages_key="answer"

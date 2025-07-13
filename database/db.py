@@ -5,6 +5,8 @@ from motor.motor_asyncio import AsyncIOMotorClient
 load_dotenv()
 
 DB_URL = os.getenv("DB_URL")
+print(DB_URL)
+
 
 client = AsyncIOMotorClient(DB_URL)
 
@@ -14,6 +16,8 @@ message_collection = Chatbot.get_collection("Messages")
 
 session_collection = Chatbot.get_collection("sessions")
 session_collection.create_index("sessionId",unique=True)
+
+user_collection = Chatbot.get_collection("user")
 
 file_collection = Chatbot.get_collection("files")
 file_collection.create_index("fileId",unique=True)

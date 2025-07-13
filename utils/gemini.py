@@ -28,4 +28,18 @@ def generate_session_title(text: str) -> str:
         return response.text.strip('"').strip("'").replace("\n", " ") if response and response.text else "Title generation failed"
     except Exception as e:
         return f"Error: {str(e)}"
+    
+def getResponse(text: str) ->str:
+    try:
+        response = model.generate_content(
+            f"You are a chatbot called Archelon specialized for perl language coding, answer this one in detail if it asks for explain explain this,: '{text}'. "
+            "Follow these rules: "
+            "1. Use title case "
+            "2. No ending punctuation "
+            "3. Focus on main keywords "
+            "4. Keep it descriptive but short "
+        )
+        return response.text.strip('"').strip("'").replace("\n", " ") if response and response.text else "Response generation failed"
+    except Exception as e:
+        return f"Error: {str(e)}"
 
