@@ -1,72 +1,47 @@
-from langchain_ollama import OllamaLLM
-from langchain.callbacks import AsyncIteratorCallbackHandler
-from langchain_core.output_parsers import StrOutputParser
-from langchain_core.chat_history import BaseChatMessageHistory
-from langchain_core.runnables.history import RunnableWithMessageHistory
-from langchain_core.prompts import ChatPromptTemplate,MessagesPlaceholder
-import os
-from dotenv import load_dotenv
-import asyncio
-from pymongo import MongoClient
-from services.chatHistory.mongoClassHistory import LimitedMongoDBChatMessageHistory
+from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
+from contextlib import asynccontextmanager
 
+# --- STEP 1: ONLY import the database client and the ONE router we need ---
+from database.db import client
+from routes.errorRoutes import router as error_router
 
+# This lifespan function will handle startup and shutdown events
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Code to run on startup
+    print("--- Application starting up for error checking... ---")
+    app.mongodb_client = client
+    try:
+        # Test the connection
+        await app.mongodb_client.admin.command("ping")
+        print("✅ MongoDB connection successful!")
+    except Exception as e:
+        print(f"❌ MongoDB connection failed! {e}")
+    
+    yield
+    
+    # Code to run on shutdown
+    print("--- Application shutting down... ---")
+    app.mongodb_client.close()
 
-load_dotenv()
-DB_URL = os.getenv("DB_URL")
+# --- STEP 2: Create the app using the lifespan function ---
+app = FastAPI(lifespan=lifespan)
 
-mongo_client = MongoClient(DB_URL)
-try:
-    # Create indexes for better query performance
-    mongo_client.Chatbot.Messages.create_index([("sessionId", 1)])
-    mongo_client.Chatbot.Messages.create_index([("sessionId", 1), ("_id", -1)])
-    print("MongoDB indexes created successfully")
-except Exception as e:
-    print(f"Warning: Failed to create MongoDB indexes: {e}")
-
-qa_prompt = ChatPromptTemplate.from_messages([
-    ("system", "You are the code assistant named Archelon AI. Use the most recent chat history to answer questions when necessary."),
-    MessagesPlaceholder(variable_name="chat_history"),  # Ensure this matches `history_messages_key`
-    ("human", "{input}"),
-])
-
-
-# Initialize the LLM
-llm = OllamaLLM(model="codellama:latest")
-parser = StrOutputParser()
-llm_chain = qa_prompt| llm | parser
-
-
-
-def get_session_history(session_id: str) -> BaseChatMessageHistory:
-    return LimitedMongoDBChatMessageHistory(
-        connection_string=DB_URL,
-        database_name="Chatbot",
-        collection_name="Messages",
-        session_id=session_id,
-        limit=20  # Limit to last 20 messages
-    )
-
-conversational_chain = RunnableWithMessageHistory(
-    llm_chain,
-    get_session_history,
-    input_messages_key="input",
-    history_messages_key="chat_history",
+# Add middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
 )
 
-def get_callback_handler():
-    return AsyncIteratorCallbackHandler()
+# --- STEP 3: ONLY include the error checking router ---
+# All other routes that require Groq, Ollama, etc., are ignored.
+app.include_router(error_router)
 
 
-# async def testLLM():
-#     question = input("Enter the prompt: ")
-#     sessionId = "123"
-#     callback_handler = get_callback_handler()
-#     result = await conversational_chain.ainvoke(
-#         {"input":question},  # Use the actual question rather than "Test message"
-#         config={"configurable": {"session_id": sessionId},"callbacks": [callback_handler]}
-#     )
-#     print(result)
-
-# asyncio.run(testLLM())
-
+@app.get("/")
+async def root():
+    return {"message": "Error Checker API is running"}
