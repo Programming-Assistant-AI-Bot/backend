@@ -1,0 +1,117 @@
+import google.generativeai as genai
+import json
+from langchain_ollama import OllamaLLM
+import asyncio
+
+# Replace with your actual Gemini API key
+genai.configure(api_key="AIzaSyANS1TCO4NDxO9g6c2gtQoQGFYFVeKAKQA")
+
+# Load the model with safety settings
+model = genai.GenerativeModel('gemini-2.0-flash',
+    safety_settings=[
+        {"category": "HARM_CATEGORY_DANGEROUS", "threshold": "BLOCK_NONE"},
+        {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
+        {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"}
+    ]
+)
+
+def generate_session_title(text: str) -> str:
+    try:
+        response = model.generate_content(
+            f"Convert this text into a clear, concise title (3-5 words): '{text}'. "
+            "Follow these rules: "
+            "1. Use title case "
+            "2. No ending punctuation "
+            "3. Focus on main keywords "
+            "4. Keep it descriptive but short "
+            "5. Should be a summarized meaningful title "
+            "6. Do not use the words like Perl, Code, Script "
+            "eg: Query: Write a program to add 2 numbers  title: Addition of Two Numbers"
+        )
+        return response.text.strip('"').strip("'").replace("\n", " ") if response and response.text else "Title generation failed"
+    except Exception as e:
+        return f"Error: {str(e)}"
+    
+def getResponse(text: str) ->str:
+    try:
+        response = model.generate_content(
+            f"You are a chatbot called Archelon specialized for perl language coding, answer this one in detail if it asks for explain explain this,: '{text}'. "
+            "Follow these rules: "
+            "1. Use title case "
+            "2. No ending punctuation "
+            "3. Focus on main keywords "
+            "4. Keep it descriptive but short "
+        )
+        return response.text.strip('"').strip("'").replace("\n", " ") if response and response.text else "Response generation failed"
+    except Exception as e:
+        return f"Error: {str(e)}"
+
+async def get_code_errors(perl_code: str) -> list:
+    """
+    Sends Perl code to the Ollama Qwen 2.5 Coder 3B model to find syntax and logical errors.
+
+    Args:
+        perl_code: A string containing the Perl code to check.
+
+    Returns:
+        A list of error dictionaries, or an empty list if no errors are found
+        or if the API response is invalid.
+    """
+    # Initialize the Ollama model
+    llm = OllamaLLM(
+        model="qwen2.5-coder:3b",
+        model_kwargs={"num_ctx": 32768}
+    )
+
+    prompt = f"""
+You are an expert Perl developer and a very strict code linter.
+Your task is to analyze the following Perl code line by line for ALL possible errors.
+This includes syntax errors, undeclared variables (due to `use strict`), typos, and potential logical errors.
+
+Do not stop after finding the first error. You MUST report every single error you find.
+
+For each error you find, provide the information in a JSON array format.
+Each object in the array must have these keys: "line", "start", "end", and "message".
+- "line": The line number where the error occurs (1-indexed).
+- "start": The starting column number of the error on that line (0-indexed).
+- "end": The ending column number of the error on that line (0-indexed).
+- "message": A clear, concise description of the error and error fix suggestion.
+
+If you find no errors, you MUST return an empty array: [].
+
+Output ONLY valid JSON with no additional text or explanation.
+
+Here is the Perl code:
+```perl
+{perl_code}
+```
+"""
+
+    try:
+        # Call the Ollama model asynchronously
+        response = await llm.ainvoke(prompt)
+        print(response)
+        # The response should contain the JSON directly, but let's clean it just in case
+        cleaned_json = response.strip()
+        
+        # If the response is wrapped in code blocks, remove them
+        if cleaned_json.startswith("```json"):
+            cleaned_json = cleaned_json.replace("```json", "").replace("```", "").strip()
+        elif cleaned_json.startswith("```"):
+            cleaned_json = cleaned_json.replace("```", "").strip()
+            
+        # Parse the cleaned string into a Python list of dictionaries
+        errors = json.loads(cleaned_json)
+        
+        # Basic validation to ensure we have a list
+        if isinstance(errors, list):
+            return errors
+        else:
+            print(f"Ollama response was not a valid JSON list: {cleaned_json}")
+            return []
+
+    except Exception as e:
+        # If anything goes wrong (API error, JSON parsing error),
+        # return an empty list so the extension doesn't crash.
+        print(f"An error occurred while checking code with Ollama: {e}")
+        return []
