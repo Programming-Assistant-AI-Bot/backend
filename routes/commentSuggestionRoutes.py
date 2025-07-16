@@ -67,6 +67,7 @@ prompt = ChatPromptTemplate.from_messages([
         "6. Always generate some functional code even if the request is ambiguous\n"
         "7. If generating a function that exists in related code, use its signature and behavior as reference\n"
         "8. Use the provided context as reference for generating code and strictly follow indentation\n"
+        "9. Always prioritize the related code structures to generate code when it's appropriate"
         "RESPONSE FORMAT:\n"
         "Only the exact code to insert, using existing indentation from prefix/suffix.Generate code at any cost"
     ),

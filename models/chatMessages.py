@@ -5,6 +5,7 @@ from datetime import datetime,timezone
 
 class Message(BaseModel):
     sessionId : str
+    userId: str
     role : Literal["assistant","user"]
     content: str
     timestamp: datetime 

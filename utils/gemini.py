@@ -1,24 +1,17 @@
 import google.generativeai as genai
 import json
 
-# --- Existing Code: Model Configuration ---
-# This part remains the same. The model is configured once and reused.
-
 # Replace with your actual Gemini API key
-genai.configure(api_key="AIzaSyCa1QJdPAE-VYHsIic4dCagKH5jSKxvrl8") # IMPORTANT: Remember to use environment variables for keys in production
+genai.configure(api_key="AIzaSyANS1TCO4NDxO9g6c2gtQoQGFYFVeKAKQA")
 
 # Load the model with safety settings
-model = genai.GenerativeModel('gemini-1.5-flash',
+model = genai.GenerativeModel('gemini-2.0-flash',
     safety_settings=[
-        {"category": "HARM_CATEGORY_DANGEROUS_CONTENT", "threshold": "BLOCK_NONE"},
+        {"category": "HARM_CATEGORY_DANGEROUS", "threshold": "BLOCK_NONE"},
         {"category": "HARM_CATEGORY_HARASSMENT", "threshold": "BLOCK_NONE"},
-        {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"},
-        {"category": "HARM_CATEGORY_SEXUALLY_EXPLICIT", "threshold": "BLOCK_NONE"},
+        {"category": "HARM_CATEGORY_HATE_SPEECH", "threshold": "BLOCK_NONE"}
     ]
 )
-
-# --- Existing Code: Session Title Generation ---
-# This function is preserved exactly as you wrote it.
 
 def generate_session_title(text: str) -> str:
     try:
@@ -113,3 +106,18 @@ Here is the Perl code:
         # return an empty list so the extension doesn't crash.
         print(f"An error occurred while checking code with Gemini: {e}")
         return []
+
+    
+def getResponse(text: str) ->str:
+    try:
+        response = model.generate_content(
+            f"You are a chatbot called Archelon specialized for perl language coding, answer this one in detail if it asks for explain explain this,: '{text}'. "
+            "Follow these rules: "
+            "1. Use title case "
+            "2. No ending punctuation "
+            "3. Focus on main keywords "
+            "4. Keep it descriptive but short "
+        )
+        return response.text.strip('"').strip("'").replace("\n", " ") if response and response.text else "Response generation failed"
+    except Exception as e:
+        return f"Error: {str(e)}"

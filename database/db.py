@@ -5,8 +5,10 @@ from motor.motor_asyncio import AsyncIOMotorClient
 # Load environment variables from .env file
 load_dotenv()
 
-# Get MongoDB URI from environment
-DB_URL = os.getenv("MONGODB_URI")
+
+DB_URL = os.getenv("DB_URL")
+print(DB_URL)
+
 
 # --- This is a critical check to make sure the .env file is being read ---
 if not DB_URL:
@@ -20,7 +22,18 @@ client = AsyncIOMotorClient(DB_URL)
 # Access the Chatbot database
 Chatbot = client.Chatbot
 
-# Export collections so other files can use them
 message_collection = Chatbot.get_collection("Messages")
+
 session_collection = Chatbot.get_collection("sessions")
+session_collection.create_index("sessionId",unique=True)
+
+user_collection = Chatbot.get_collection("user")
+
 file_collection = Chatbot.get_collection("files")
+file_collection.create_index("fileId",unique=True)
+
+try:
+    client.admin.command("ping")
+    print("✅ MongoDB connection successful!")
+except Exception as e:
+    print("❌ MongoDB connection failed!", e)
