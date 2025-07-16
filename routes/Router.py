@@ -60,7 +60,7 @@ async def delete_Session(
     if str(session["userId"]) != current_user["id"]:
         raise HTTPException(status_code=403, detail="You don't have permission to delete this session")
     
-    return await deleteSession(sessionId)
+    return await deleteSession(sessionId,current_user["id"])
 
 
 class QueryInput(BaseModel):
@@ -105,20 +105,22 @@ async def create_session(input: QueryInput, current_user: dict = Depends(get_cur
         
         # Insert session into collection
         result = await session_collection.insert_one(session_data)
-        
-        # Generate and save assistant response - ADD user_id parameter
-        chain = make_conversational_chain(
-            session_id=session_id,
-            user_id=current_user["id"]  # Add this line
-        )
-        
-        assistant_response = ""
-        async for chunk in chain.astream(
-            {"input": input.query},
-            config={"configurable": {"session_id": session_id}}
-        ):
-            if isinstance(chunk, dict) and 'answer' in chunk:
-                assistant_response += chunk['answer']
+
+        # Check if query contains special markers
+        if not ("[Repository Link]" in input.query or "[Website URL]" in input.query or "[Attachment]" in input.query):
+            # Generate and save assistant response - ADD user_id parameter
+            chain = make_conversational_chain(
+                session_id=session_id,
+                user_id=current_user["id"]  # Add this line
+            )
+            
+            assistant_response = ""
+            async for chunk in chain.astream(
+                {"input": input.query},
+                config={"configurable": {"session_id": session_id}}
+            ):
+                if isinstance(chunk, dict) and 'answer' in chunk:
+                    assistant_response += chunk['answer']
         
         return {
             "id": str(result.inserted_id),
@@ -128,4 +130,40 @@ async def create_session(input: QueryInput, current_user: dict = Depends(get_cur
             "updatedAt": now
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to create session: {str(e)}"
+        raise HTTPException(status_code=500, detail=f"Failed to create session: {str(e)}")
+    
+@router.post("/createSession")
+async def create_session(input: QueryInput, current_user: dict = Depends(get_current_user)):
+    try:
+        # Generate a unique session ID
+        session_id = str(uuid.uuid4())
+        
+        # Generate session title from the query (or use a placeholder if query is empty)
+        session_name = generate_session_title(input.query or "New Session")
+        
+        # Current timestamp
+        now = datetime.utcnow()
+        
+        # Create session data
+        session_data = {
+            "sessionId": session_id,
+            "userId": current_user["id"],
+            "sessionName": session_name,
+            "createdAt": now,
+            "updatedAt": now
+        }
+        
+        # Insert session into collection
+        result = await session_collection.insert_one(session_data)
+
+        # Do NOT add any messages or assistant response here!
+
+        return {
+            "id": str(result.inserted_id),
+            "sessionId": session_id,
+            "sessionName": session_name,
+            "createdAt": now,
+            "updatedAt": now
+        }
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to create session: {str(e)}")

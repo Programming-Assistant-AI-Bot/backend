@@ -3,6 +3,8 @@ from fastapi.middleware.cors import CORSMiddleware
 from routes import auth_routes, chatHistoryRoutes, chatRoutes, commentSuggestionRoutes, Router,validateContentRoutes,chatRoutesTharundi
 from routes.errorRoutes import router as error_router
 
+app = FastAPI()
+
 # Add CORS middleware
 app.add_middleware(
     CORSMiddleware,

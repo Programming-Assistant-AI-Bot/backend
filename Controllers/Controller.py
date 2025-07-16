@@ -5,6 +5,9 @@ from fastapi import HTTPException
 from datetime import datetime
 from utils.gemini import generate_session_title
 from bson import ObjectId
+from vectordb.persistentFaiss import PersistentSessionStorage
+
+vectordb = PersistentSessionStorage()
 
 
 
@@ -24,6 +27,38 @@ async def addMessage(sessionId: str, content: str, role: str, userId: str = None
 
 
 def getTitleFromContent(content: str) -> str:
+    """Generate a title from the user's message content."""
+    # Clean up the content
+    content = content.strip()
+    
+    # Handle empty content
+    if not content:
+        return "New Session"
+        
+    # Handle content for attachments
+    if "[Repository Link]" in content:
+        url = content.replace("[Repository Link]", "").strip()
+        # Extract repo name from URL
+        repo_parts = url.strip("/").split("/")
+        if len(repo_parts) >= 2:
+            return f"Repository: {repo_parts[-2]}/{repo_parts[-1]}"
+        return f"Repository Analysis"
+        
+    if "[Website URL]" in content:
+        url = content.replace("[Website URL]", "").strip()
+        # Extract domain from URL
+        from urllib.parse import urlparse
+        try:
+            domain = urlparse(url).netloc
+            return f"Website: {domain}"
+        except:
+            return "Website Analysis"
+            
+    if "[Attachment]" in content:
+        file_name = content.replace("[Attachment]", "").strip()
+        return f"Document: {file_name}"
+        
+    # For regular text messages, use the first ~40 chars
     title = generate_session_title(content)
     return title
 
@@ -100,8 +135,9 @@ async def updateSessionName(sessionId: str, newName: str, userId: str = None):
 
 
 
-async def deleteSession(sessionId: str, userId: str = None):
+async def deleteSession(sessionId: str, userId: str):
     try:
+        
         # Build the query based on whether userId is provided
         query = {"sessionId": sessionId}
         if userId:
@@ -116,6 +152,8 @@ async def deleteSession(sessionId: str, userId: str = None):
         if userId:
             message_query["userId"] = userId
         await message_collection.delete_many(message_query)
+
+        vectordb.delete_session(user_id=userId,session_id=sessionId)
         
         return {"message": "Session and all related messages deleted successfully"}
     
