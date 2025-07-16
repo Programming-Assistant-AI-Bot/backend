@@ -19,6 +19,7 @@ async def simple_stream_chat_response(sessionId: str, request: MessageRequest, c
                 {"input": request.message},
                 config={"configurable": {"session_id": sessionId}}
             ):
+
                 # Extract only the 'answer' content for streaming
                 if isinstance(chunk, dict) and 'answer' in chunk:
                     token = chunk['answer']

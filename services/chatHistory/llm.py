@@ -43,9 +43,9 @@ llm = OllamaLLM(
     model="qwen2.5-coder:3b",
     streaming=True,
     model_kwargs={"num_ctx": 32768}
+
 )
 parser = StrOutputParser()
-
 
 # —— Prompt Templates ——
 SYSTEM_TEXT = (

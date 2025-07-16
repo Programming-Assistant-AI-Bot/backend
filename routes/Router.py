@@ -17,8 +17,6 @@ from bson import ObjectId
 
 router=APIRouter(prefix="/session",tags=["session"])
 
-
-
 @router.put("/rename/{sessionId}/{newName}")
 async def rename_Session(
     sessionId: str, 
@@ -130,4 +128,4 @@ async def create_session(input: QueryInput, current_user: dict = Depends(get_cur
             "updatedAt": now
         }
     except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Failed to create session: {str(e)}")
+        raise HTTPException(status_code=500, detail=f"Failed to create session: {str(e)}"

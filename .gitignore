@@ -15,5 +15,4 @@ __pycache__/
 
 session_storage
 
-# uvicorn main:app --reload
 

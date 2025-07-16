@@ -4,6 +4,7 @@ from schemas.url import UrlInput
 from services.loaders.websiteLoader import get_split_chunks_from_url
 from services.loaders.gitRepoLoader import get_split_chunks_from_github
 from vectordb.persistentFaiss import PersistentSessionStorage
+
 from Controllers.Controller import addMessage
 # —— Per-session FAISS storage helper ——
 storage = PersistentSessionStorage(base_directory="./session_storage")
@@ -24,6 +25,7 @@ async def validateUrl(data: UrlInput, user_id: str):
         if response.status_code < 400:
             try:
                 chunks = get_split_chunks_from_url(url=url)
+
                 print("Validating URL sessionId: "+session_id)
                 print("validating URL chunks: "+str(chunks))
                 storage.add_documents_to_session(
@@ -69,6 +71,7 @@ async def validateUrl(data: UrlInput, user_id: str):
 
 # Updated regex pattern to handle .git suffix and http/https
 GITHUB_REPO_REGEX = r"^https?://github\.com/([^/]+)/([^/]+?)(?:\.git)?/?$"
+
 
 async def validateGithubUrl(url: str, session_id: str, user_id: str, token: str = None) -> dict:
     """
