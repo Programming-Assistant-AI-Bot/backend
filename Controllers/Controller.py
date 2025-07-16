@@ -91,6 +91,7 @@ async def generateNewSessionId(userId: str = None) -> str:
 
 
 
+
 async def addSession(content: str, userId: str):
     session_Id = await generateNewSessionId()
     title = getTitleFromContent(content)

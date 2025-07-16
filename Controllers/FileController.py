@@ -78,10 +78,11 @@ async def addDocument(file: UploadFile = File(...), doc_name: str = Form(...), s
 
         file_id = drive_response["id"]
         file_link = f"https://drive.google.com/file/d/{file_id}/view"
+
         
 
     except Exception as e:
-        
+
         raise HTTPException(
             status_code=500,
             detail=f"Google Drive upload failed: {str(e)}"
@@ -106,6 +107,7 @@ async def addDocument(file: UploadFile = File(...), doc_name: str = Form(...), s
             })
         
         # Add chunks to the session's vector database
+
         storage.add_documents_to_session(
             user_id=user_id, 
             session_id=session_id, 
@@ -125,7 +127,7 @@ async def addDocument(file: UploadFile = File(...), doc_name: str = Form(...), s
             drive_service.files().delete(fileId=file_id).execute()
         except Exception as drive_error:
             print(f"Drive cleanup failed: {drive_error}")
-         
+
         raise HTTPException(
             status_code=500,
             detail=f"PDF processing failed: {str(e)}"
@@ -147,7 +149,6 @@ async def addDocument(file: UploadFile = File(...), doc_name: str = Form(...), s
     # Store in MongoDB
     try:
         result = await file_collection.insert_one(file_document)
-        
         # Update message to show successful vectorization
         message_content = f"[Attachment] {doc_name}"
         message_data = message_content
@@ -183,7 +184,6 @@ async def addDocument(file: UploadFile = File(...), doc_name: str = Form(...), s
         # Log cleanup errors if any
         if cleanup_errors:
             print(f"Cleanup errors: {'; '.join(cleanup_errors)}")
-              
             
         raise HTTPException(    
             status_code=500,

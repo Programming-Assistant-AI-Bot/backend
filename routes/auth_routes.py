@@ -4,6 +4,7 @@ from schemas.user_schema import UserSignup, UserLogin, TokenResponse, UserRespon
 from services.auth.auth_service import signup_user, login_user
 from utils.auth_utils import get_current_user
 
+
 router = APIRouter()
 
 @router.post("/signup", response_model=UserResponse)

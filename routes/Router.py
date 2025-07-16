@@ -17,8 +17,6 @@ from bson import ObjectId
 
 router=APIRouter(prefix="/session",tags=["session"])
 
-
-
 @router.put("/rename/{sessionId}/{newName}")
 async def rename_Session(
     sessionId: str, 

@@ -66,6 +66,7 @@ class PersistentSessionStorage:
             return True
         return False
 
+
     def create_or_load(self, user_id, session_id, initial_documents=None):
         """
         Load the FAISS database for an existing user's session,
