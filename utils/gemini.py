@@ -1,4 +1,7 @@
 import google.generativeai as genai
+import json
+from langchain_ollama import OllamaLLM
+import asyncio
 
 # Replace with your actual Gemini API key
 genai.configure(api_key="AIzaSyANS1TCO4NDxO9g6c2gtQoQGFYFVeKAKQA")
@@ -43,3 +46,72 @@ def getResponse(text: str) ->str:
     except Exception as e:
         return f"Error: {str(e)}"
 
+async def get_code_errors(perl_code: str) -> list:
+    """
+    Sends Perl code to the Ollama Qwen 2.5 Coder 3B model to find syntax and logical errors.
+
+    Args:
+        perl_code: A string containing the Perl code to check.
+
+    Returns:
+        A list of error dictionaries, or an empty list if no errors are found
+        or if the API response is invalid.
+    """
+    # Initialize the Ollama model
+    llm = OllamaLLM(
+        model="qwen2.5-coder:3b",
+        model_kwargs={"num_ctx": 32768}
+    )
+
+    prompt = f"""
+You are an expert Perl developer and a very strict code linter.
+Your task is to analyze the following Perl code line by line for ALL possible errors.
+This includes syntax errors, undeclared variables (due to `use strict`), typos, and potential logical errors.
+
+Do not stop after finding the first error. You MUST report every single error you find.
+
+For each error you find, provide the information in a JSON array format.
+Each object in the array must have these keys: "line", "start", "end", and "message".
+- "line": The line number where the error occurs (1-indexed).
+- "start": The starting column number of the error on that line (0-indexed).
+- "end": The ending column number of the error on that line (0-indexed).
+- "message": A clear, concise description of the error and error fix suggestion.
+
+If you find no errors, you MUST return an empty array: [].
+
+Output ONLY valid JSON with no additional text or explanation.
+
+Here is the Perl code:
+```perl
+{perl_code}
+```
+"""
+
+    try:
+        # Call the Ollama model asynchronously
+        response = await llm.ainvoke(prompt)
+        print(response)
+        # The response should contain the JSON directly, but let's clean it just in case
+        cleaned_json = response.strip()
+        
+        # If the response is wrapped in code blocks, remove them
+        if cleaned_json.startswith("```json"):
+            cleaned_json = cleaned_json.replace("```json", "").replace("```", "").strip()
+        elif cleaned_json.startswith("```"):
+            cleaned_json = cleaned_json.replace("```", "").strip()
+            
+        # Parse the cleaned string into a Python list of dictionaries
+        errors = json.loads(cleaned_json)
+        
+        # Basic validation to ensure we have a list
+        if isinstance(errors, list):
+            return errors
+        else:
+            print(f"Ollama response was not a valid JSON list: {cleaned_json}")
+            return []
+
+    except Exception as e:
+        # If anything goes wrong (API error, JSON parsing error),
+        # return an empty list so the extension doesn't crash.
+        print(f"An error occurred while checking code with Ollama: {e}")
+        return []
