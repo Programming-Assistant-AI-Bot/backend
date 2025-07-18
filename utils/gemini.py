@@ -59,27 +59,36 @@ async def get_code_errors(perl_code: str) -> list:
     """
     # Initialize the Ollama model
     llm = OllamaLLM(
-        model="qwen2.5-coder:3b",
-        model_kwargs={"num_ctx": 32768}
+        model="qwen2.5-coder:7b",
+        model_kwargs={
+        "num_ctx": 32768,
+        "temperature": 0.1
+        }
     )
 
     prompt = f"""
-You are an expert Perl developer and a very strict code linter.
-Your task is to analyze the following Perl code line by line for ALL possible errors.
-This includes syntax errors, undeclared variables (due to `use strict`), typos, and potential logical errors.
+You are an expert Perl developer and a very strict, line-by-line code linter.
+Your task is to analyze the following Perl code and identify ALL possible errors in the EXECUTABLE code.
 
-Do not stop after finding the first error. You MUST report every single error you find.
+*CRITICAL INSTRUCTION 1: You MUST ignore all comments.* Do not report errors on lines that start with a #. Analyze only the active code.
+
+*CRITICAL INSTRUCTION 2: Do not stop after finding the first error.* You MUST report every single error you find in the code.
+
+**CRITICAL INSTRUCTION 3: The location data (line, start, end) MUST be precise.** For example, if an undeclared variable is used on line 10, the "line" number in your JSON response MUST be 10. Do not report the line where the variable should have been declared. Pinpoint the exact location of the usage error.
+
+This includes:
+- Syntax errors (e.g., missing semicolons, incorrect operators).
+- Undeclared variables (due to use strict).
+- Typos in variable or function names.
 
 For each error you find, provide the information in a JSON array format.
 Each object in the array must have these keys: "line", "start", "end", and "message".
-- "line": The line number where the error occurs (1-indexed).
+- "line": The exact line number where the error occurs (1-indexed).
 - "start": The starting column number of the error on that line (0-indexed).
 - "end": The ending column number of the error on that line (0-indexed).
-- "message": A clear, concise description of the error and error fix suggestion.
+- "message": A clear, concise description of the error.
 
-If you find no errors, you MUST return an empty array: [].
-
-Output ONLY valid JSON with no additional text or explanation.
+If you find no errors in the executable code, you MUST return an empty array: [].
 
 Here is the Perl code:
 ```perl
