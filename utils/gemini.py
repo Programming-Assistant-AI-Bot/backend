@@ -2,9 +2,10 @@ import google.generativeai as genai
 import json
 from langchain_ollama import OllamaLLM
 import asyncio
+import re
 
 # Replace with your actual Gemini API key
-genai.configure(api_key="AIzaSyANS1TCO4NDxO9g6c2gtQoQGFYFVeKAKQA")
+genai.configure(api_key="AIzaSyC0coFyomfjU26ViF5ShUABamuXcSJNGVc") 
 
 # Load the model with safety settings
 model = genai.GenerativeModel('gemini-2.0-flash',
@@ -46,81 +47,100 @@ def getResponse(text: str) ->str:
     except Exception as e:
         return f"Error: {str(e)}"
 
+# --- Final Updated Function for Reliable Error Detection ---
 async def get_code_errors(perl_code: str) -> list:
     """
-    Sends Perl code to the Ollama Qwen 2.5 Coder 3B model to find syntax and logical errors.
-
-    Args:
-        perl_code: A string containing the Perl code to check.
-
-    Returns:
-        A list of error dictionaries, or an empty list if no errors are found
-        or if the API response is invalid.
+    Sends Perl code to the Gemini API to find errors.
+    The prompt is now simplified to maximize the error detection rate.
     """
-    # Initialize the Ollama model
-    llm = OllamaLLM(
-        model="qwen2.5-coder:7b",
-        model_kwargs={
-        "num_ctx": 32768,
-        "temperature": 0.1
-        }
-    )
-
+    # --- NEW, SIMPLIFIED PROMPT ---
     prompt = f"""
-You are an expert Perl developer and a very strict, line-by-line code linter.
-Your task is to analyze the following Perl code and identify ALL possible errors in the EXECUTABLE code.
-
-*CRITICAL INSTRUCTION 1: You MUST ignore all comments.* Do not report errors on lines that start with a #. Analyze only the active code.
-
-*CRITICAL INSTRUCTION 2: Do not stop after finding the first error.* You MUST report every single error you find in the code.
-
-**CRITICAL INSTRUCTION 3: The location data (line, start, end) MUST be precise.** For example, if an undeclared variable is used on line 10, the "line" number in your JSON response MUST be 10. Do not report the line where the variable should have been declared. Pinpoint the exact location of the usage error.
+You are an expert Perl developer. Your task is to analyze the following Perl code and identify ALL possible syntax and logical errors. Your top priority is to find every single error.
 
 This includes:
-- Syntax errors (e.g., missing semicolons, incorrect operators).
-- Undeclared variables (due to use strict).
-- Typos in variable or function names.
+- Syntax errors (e.g., missing semicolons).
+- Undeclared variables.
+- Typos in function names.
+- Logical errors (e.g., using == on strings instead of eq).
 
 For each error you find, provide the information in a JSON array format.
-Each object in the array must have these keys: "line", "start", "end", and "message".
+Each object must have only these two keys: "line" and "message".
+
 - "line": The exact line number where the error occurs (1-indexed).
-- "start": The starting column number of the error on that line (0-indexed).
-- "end": The ending column number of the error on that line (0-indexed).
 - "message": A clear, concise description of the error.
 
-If you find no errors in the executable code, you MUST return an empty array: [].
+CRITICAL: In the final JSON output, all backslash characters \\ within the message string MUST be properly escaped as \\\\.
+
+--- EXAMPLE ---
+Code:
+`my $val = 10;
+if ($val eq 10) {{ print "ok" }}`
+
+Response:
+[
+  {{
+    "line": 2,
+    "message": "Logical Error: Using string comparison 'eq' on a number. Use '==' for numeric comparison."
+  }}
+]
+
+If you find no errors, you MUST return an empty array: [].
 
 Here is the Perl code:
-```perl
+
+perl
 {perl_code}
-```
+
 """
 
     try:
-        # Call the Ollama model asynchronously
-        response = await llm.ainvoke(prompt)
-        print(response)
-        # The response should contain the JSON directly, but let's clean it just in case
-        cleaned_json = response.strip()
+        response = await model.generate_content_async(prompt)
         
-        # If the response is wrapped in code blocks, remove them
+        # Check if response is valid
+        if not response or not response.text:
+            print("Warning: Received empty response from Gemini API")
+            return []
+        
+        # Clean the response
+        cleaned_json = response.text.strip()
+        
+        # Remove common markdown formatting
         if cleaned_json.startswith("```json"):
-            cleaned_json = cleaned_json.replace("```json", "").replace("```", "").strip()
-        elif cleaned_json.startswith("```"):
-            cleaned_json = cleaned_json.replace("```", "").strip()
-            
-        # Parse the cleaned string into a Python list of dictionaries
-        errors = json.loads(cleaned_json)
+            cleaned_json = cleaned_json[7:]
+        if cleaned_json.endswith("```"):
+            cleaned_json = cleaned_json[:-3]
         
-        # Basic validation to ensure we have a list
+        cleaned_json = cleaned_json.strip()
+        
+        # Check if the cleaned response is empty
+        if not cleaned_json:
+            print("Warning: Empty response after cleaning")
+            return []
+        
+        try:
+            errors = json.loads(cleaned_json)
+        except json.JSONDecodeError as e:
+            if "Invalid \\escape" in str(e):
+                print("Warning: Received invalid JSON from API. Attempting to fix backslashes...")
+                fixed_json = re.sub(r'(?<!\\)\\(?!["\\/bfnrt])', r'\\\\', cleaned_json)
+                try:
+                    errors = json.loads(fixed_json)
+                    print("Successfully fixed and parsed JSON.")
+                except json.JSONDecodeError as e2:
+                    print(f"Failed to parse JSON even after fixing backslashes: {e2}")
+                    print(f"Original response: {response.text}")
+                    return []
+            else:
+                print(f"JSON parsing error: {e}")
+                print(f"Response text: {cleaned_json}")
+                return []
+
         if isinstance(errors, list):
             return errors
         else:
-            print(f"Ollama response was not a valid JSON list: {cleaned_json}")
+            print(f"Gemini response was not a valid JSON list: {cleaned_json}")
             return []
 
     except Exception as e:
-        # If anything goes wrong (API error, JSON parsing error),
-        # return an empty list so the extension doesn't crash.
-        print(f"An error occurred while checking code with Ollama: {e}")
+        print(f"An error occurred while checking code with Gemini: {e}")
         return []
