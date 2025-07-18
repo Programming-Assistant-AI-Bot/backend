@@ -1,10 +1,9 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routes import auth_routes, chatHistoryRoutes, chatRoutes, commentSuggestionRoutes, Router,validateContentRoutes
+from routes import auth_routes, chatHistoryRoutes, chatRoutes, commentSuggestionRoutes, Router,validateContentRoutes, altCodeRoutes
 
 app = FastAPI()
 
-# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173"],  # Or ["*"] for all
@@ -13,7 +12,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Include your auth routes with prefix
 app.include_router(auth_routes.router, prefix="/auth", tags=["Authentication"])
 
 # Include API routes
@@ -22,7 +20,7 @@ app.include_router(chatRoutes.router, prefix="/chats")
 app.include_router(Router.router)
 app.include_router(commentSuggestionRoutes.router, prefix='/commentCode')
 app.include_router(validateContentRoutes.router, prefix="/validate")
-
+app.include_router(altCodeRoutes.router)
 
 @app.get("/")
 async def root():
