@@ -26,5 +26,17 @@ def login_user(data):
     if not user or not pwd_context.verify(data.password, user["password"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
-    token = create_access_token({"user_id": str(user["_id"])})
-    return {"access_token": token}
+    # Add more user information to the token payload
+    token = create_access_token({
+        "user_id": str(user["_id"]),
+        "username": user["username"],
+        "email": user["email"]
+    })
+    
+    return {
+        "access_token": token,
+        "token_type": "bearer",
+        "user_id": str(user["_id"]),  
+        "username": user["username"], 
+        "email": user["email"]         
+    }

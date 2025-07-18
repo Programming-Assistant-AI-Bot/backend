@@ -11,24 +11,26 @@ class PersistentSessionStorage:
         self.embeddings = HuggingFaceEmbeddings(model_name=model_name)
         os.makedirs(base_directory, exist_ok=True)
     
-    def get_session_path(self, session_id):
-        """Return the directory path for the given session ID."""
-        # Convert session_id to string if it's not already for consistent folder naming.
-        return os.path.join(self.base_directory, str(session_id))
+    def get_session_path(self, user_id, session_id):
+        """Return the directory path for the given user ID and session ID."""
+        # Convert IDs to strings for consistent folder naming
+        user_path = os.path.join(self.base_directory, str(user_id))
+        os.makedirs(user_path, exist_ok=True)
+        return os.path.join(user_path, str(session_id))
     
-    def session_exists(self, session_id):
-        """Return whether the session exists."""
-        session_path = self.get_session_path(session_id)
+    def session_exists(self, user_id, session_id):
+        """Return whether the session exists for the user."""
+        session_path = self.get_session_path(user_id, session_id)
         index_file = os.path.join(session_path, "index.faiss")
         return os.path.exists(session_path) and os.path.exists(index_file)
     
-    def create_session(self, session_id, initial_documents=None):
+    def create_session(self, user_id, session_id, initial_documents=None):
         """Create a new session with an optional list of initial documents."""
-        session_path = self.get_session_path(session_id)
+        session_path = self.get_session_path(user_id, session_id)
         if os.path.exists(session_path):
             return session_id  # session already exists
         
-        os.makedirs(session_path)
+        os.makedirs(session_path, exist_ok=True)
         if initial_documents:
             db = FAISS.from_documents(initial_documents, self.embeddings)
         else:
@@ -38,53 +40,52 @@ class PersistentSessionStorage:
         db.save_local(session_path)
         return session_id
     
-    def get_session_db(self, session_id):
-        """Load and return the FAISS index for the given session."""
-        session_path = self.get_session_path(session_id)
+    def get_session_db(self, user_id, session_id):
+        """Load and return the FAISS index for the given user's session."""
+        session_path = self.get_session_path(user_id, session_id)
         if not os.path.exists(session_path):
-            raise ValueError(f"Session {session_id} does not exist")
-        return FAISS.load_local(session_path, self.embeddings,allow_dangerous_deserialization=True)
+            raise ValueError(f"Session {session_id} for user {user_id} does not exist")
+        return FAISS.load_local(session_path, self.embeddings, allow_dangerous_deserialization=True)
         
-    def add_documents_to_session(self, session_id, documents):
-        """Add documents to an existing session and update the FAISS index."""
-        if not self.session_exists(session_id):
-            # Create a new session with the provided documents.
-            self.create_session(session_id, documents)
+    def add_documents_to_session(self, user_id, session_id, documents):
+        """Add documents to an existing user's session and update the FAISS index."""
+        if not self.session_exists(user_id, session_id):
+            # Create a new session with the provided documents
+            self.create_session(user_id, session_id, documents)
             return
         # For an existing session:
-        db = self.get_session_db(session_id)
+        db = self.get_session_db(user_id, session_id)
         db.add_documents(documents)
-        db.save_local(self.get_session_path(session_id))
-
-
+        db.save_local(self.get_session_path(user_id, session_id))
     
-    def delete_session(self, session_id):
-        """Delete the session directory."""
-        session_path = self.get_session_path(session_id)
+    def delete_session(self, user_id, session_id):
+        """Delete the session directory for a specific user."""
+        session_path = self.get_session_path(user_id, session_id)
         if os.path.exists(session_path):
             shutil.rmtree(session_path)
             return True
         return False
 
-    def create_or_load(self, session_id, initial_documents=None):
+
+    def create_or_load(self, user_id, session_id, initial_documents=None):
         """
-        Load the FAISS database for an existing session,
-        or create a new session (with optional initial documents) if it doesn't exist.
+        Load the FAISS database for an existing user's session,
+        or create a new session if it doesn't exist.
         """
-        if self.session_exists(session_id):
-            db = self.get_session_db(session_id)
+        if self.session_exists(user_id, session_id):
+            db = self.get_session_db(user_id, session_id)
         else:
-            self.create_session(session_id, initial_documents)
-            db = self.get_session_db(session_id)
+            self.create_session(user_id, session_id, initial_documents)
+            db = self.get_session_db(user_id, session_id)
         return db
     
-    def remove_documents_by_metadata(self, session_id, metadata_filter):
-        """Remove documents from session based on metadata filter."""
-        if not self.session_exists(session_id):
+    def remove_documents_by_metadata(self, user_id, session_id, metadata_filter):
+        """Remove documents from user's session based on metadata filter."""
+        if not self.session_exists(user_id, session_id):
             return False
         
         try:
-            db = self.get_session_db(session_id)
+            db = self.get_session_db(user_id, session_id)
             
             # Get all documents with their IDs
             docs_and_scores = db.similarity_search_with_score("", k=10000)  # Get all docs
@@ -129,6 +130,6 @@ class PersistentSessionStorage:
             print(f"Error removing documents: {e}")
             return False
     
-    def remove_documents_by_file_id(self, session_id, file_id):
+    def remove_documents_by_file_id(self, user_id, session_id, file_id):
         """Remove all documents associated with a specific file ID."""
-        return self.remove_documents_by_metadata(session_id, {"file_id": file_id})
+        return self.remove_documents_by_metadata(user_id, session_id, {"file_id": file_id})
