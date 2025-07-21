@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from schemas.context import (CommentCodeRequest, CommentCodeResponse)
+from schemas.context import (CommentCodeRequest, CommentCodeResponse, CodeCompletionRequest)
 from langchain_groq import ChatGroq
 from langchain.prompts import ( ChatPromptTemplate, SystemMessagePromptTemplate, HumanMessagePromptTemplate)
 from langchain_core.output_parsers import StrOutputParser
@@ -39,7 +39,7 @@ def clean_code_from_markdown(text):
     # If no code blocks found, return original without trimming leading whitespace
     return text.rstrip()
 
-llm = OllamaLLM(model="qwen2.5-coder:3b")
+llm = OllamaLLM(model="perlbot3:latest")
 
 parser = StrOutputParser()
 
@@ -115,4 +115,100 @@ async def generateSuggestion(request: CommentCodeRequest):
 
     # Return as a JSON body with a `code` field
     return CommentCodeResponse(code=result)
+
+
+def remove_partial_prefix(result: str, prefix: str) -> str:
+    """
+    Removes any repeated or partial prefix from the start of the result.
+    Handles multi-line prefixes and partial overlaps.
+    """
+    prefix = prefix.strip()
+    result_strip = result.lstrip()
+
+    # If the result starts with the full prefix, remove it
+    if result_strip.startswith(prefix):
+        return result_strip[len(prefix):].lstrip("\n\r {")
     
+    # If not, check for the largest possible overlap
+    # We'll check for the longest suffix of the prefix that matches the start of the result
+    for i in range(1, len(prefix)):
+        if result_strip.startswith(prefix[i:]):
+            return result_strip[len(prefix[i:]):].lstrip("\n\r {")
+    return result
+    
+
+
+@router.post("/complete/")
+async def generateCompletion(request: CodeCompletionRequest):
+    try:
+        fim_completion_prompt = ChatPromptTemplate.from_messages([
+            SystemMessagePromptTemplate.from_template(
+                "You are a Perl code completion engine. Your task is to generate ONLY the missing code that connects the given prefix and suffix.\n\n"
+                
+                "# Context Information\n"
+                "- Current Block: {currentBlock}\n"
+                "- Available Variables: {variableDefinitions}\n"
+                "- Available Functions: {relatedCodeStructures}\n"
+                "- Imported Modules: {imports} ({usedModules})\n"
+                "- Module Definitions: {importDefinitions}\n\n"
+                
+                "# Completion Rules\n"
+                "## MUST DO:\n"
+                "- Generate syntactically valid Perl code that bridges prefix→suffix\n"
+                "- Match exact indentation, spacing, and style from surrounding code\n"
+                "- Use only variables/functions already defined in context\n"
+                "- Complete any incomplete syntax structures from prefix\n"
+                "- Ensure smooth semantic flow into suffix\n\n"
+                
+                "## NEVER DO:\n"
+                "- Repeat any code from prefix or suffix\n"
+                "- Add comments, explanations, or documentation\n"
+                "- Introduce new variables/functions unless suffix explicitly requires them\n"
+                "- Generate code outside the middle completion scope\n"
+                "- Include partial or incomplete statements\n\n"
+                
+                "# Analysis Process\n"
+                "1. Parse prefix for incomplete syntax (open braces, conditionals, loops, etc.)\n"
+                "2. Identify what suffix expects (variables, return values, control flow)\n"
+                "3. Generate minimal bridging code using available context\n"
+                "4. Verify: prefix + completion + suffix forms valid Perl\n\n"
+                
+                "# Output Format\n"
+                "Respond with ONLY the completion code - no explanations, no markdown, no extra text.\n"
+                "The output should be immediately executable when inserted between prefix and suffix.\n"
+            ),
+            
+            HumanMessagePromptTemplate.from_template(
+                "Complete the missing code between these sections:\n\n"
+                "PREFIX:\n{prefix_code}\n\n"
+                "SUFFIX:\n{suffix_code}\n\n"
+                "COMPLETION:"
+            ),
+        ])
+        
+        completion_chain = fim_completion_prompt | llm | parser
+        
+        result: str = await completion_chain.ainvoke({
+            "prefix_code": request.codePrefix,
+            "suffix_code": request.codeSuffix,
+            "imports": request.imports,
+            "usedModules": request.usedModules,
+            "variableDefinitions": request.variableDefinitions,
+            "relatedCodeStructures": request.relatedCodeStructures,
+            "importDefinitions": request.importDefinitions,
+            "currentBlock" : request.currentBlock
+        })
+        
+        # Clean the result
+        result = clean_code_from_markdown(result)
+        result = remove_partial_prefix(result, request.codePrefix)
+        
+        # Remove any leading/trailing whitespace but preserve necessary spacing
+        result = result.strip()
+        
+        print(f"Completion result: {result}")
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Code completion failed: {e}")
+    
+    return CommentCodeResponse(code=result)

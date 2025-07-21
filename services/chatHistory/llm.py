@@ -40,7 +40,7 @@ storage = PersistentSessionStorage(base_directory="./session_storage")
 # —— LLM & Parser ——
 # Enable streaming on the OllamaLLM
 llm = OllamaLLM(
-    model="qwen2.5-coder:3b",
+    model="perlbot3:latest",
     streaming=True,
     model_kwargs={"num_ctx": 32768}
 

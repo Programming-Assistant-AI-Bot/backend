@@ -47,42 +47,42 @@ def getResponse(text: str) ->str:
     except Exception as e:
         return f"Error: {str(e)}"
 
-# --- Final Updated Function for Reliable Error Detection ---
+
+# --- Final Updated Function for Precise Error Detection ---
 async def get_code_errors(perl_code: str) -> list:
     """
     Sends Perl code to the Gemini API to find errors.
-    The prompt is now simplified to maximize the error detection rate.
+    Includes robust logic to extract and repair JSON from the AI's response.
     """
-    # --- NEW, SIMPLIFIED PROMPT ---
     prompt = f"""
-You are an expert Perl developer. Your task is to analyze the following Perl code and identify ALL possible syntax and logical errors. Your top priority is to find every single error.
+You are an expert Perl developer. Your task is to analyze the following Perl code and find all possible syntax and logical errors.
 
-This includes:
-- Syntax errors (e.g., missing semicolons).
-- Undeclared variables.
-- Typos in function names.
-- Logical errors (e.g., using == on strings instead of eq).
+CRITICAL INSTRUCTION 1: For each error you find, you MUST return both a code_chunk (about 10 words) that contains the error, and the specific error_token (the exact word/symbol that is wrong). The code_chunk must be an EXACT copy from the source code.
 
-For each error you find, provide the information in a JSON array format.
-Each object must have only these two keys: "line" and "message".
+CRITICAL INSTRUCTION 2: Your entire response must be a single JSON array, enclosed in a markdown code block like this: json ... .
 
-- "line": The exact line number where the error occurs (1-indexed).
-- "message": A clear, concise description of the error.
+CRITICAL INSTRUCTION 3: Inside the JSON, all backslash characters \\ within any string MUST be properly escaped as \\\\.
 
-CRITICAL: In the final JSON output, all backslash characters \\ within the message string MUST be properly escaped as \\\\.
+For each error, provide the information in a JSON array format.
+Each object must have these keys: "code_chunk", "error_token", and "message".
 
 --- EXAMPLE ---
 Code:
-`my $val = 10;
-if ($val eq 10) {{ print "ok" }}`
+`my $user = "guest";
+if ($user == "admin") {{
+    print "Welcome admin!";
+}}`
 
 Response:
+json
 [
   {{
-    "line": 2,
-    "message": "Logical Error: Using string comparison 'eq' on a number. Use '==' for numeric comparison."
+    "code_chunk": "if ($user == \\"admin\\")",
+    "error_token": "==",
+    "message": "Logical Error: Using numeric equality `==` on strings. For string comparison, you should use `eq`."
   }}
 ]
+
 
 If you find no errors, you MUST return an empty array: [].
 
@@ -95,50 +95,47 @@ perl
 
     try:
         response = await model.generate_content_async(prompt)
+        raw_text = response.text
         
-        # Check if response is valid
-        if not response or not response.text:
-            print("Warning: Received empty response from Gemini API")
+        # Step 1: Find the JSON block in the response.
+        match = re.search(r'```json\s*([\s\S]*?)\s*```', raw_text)
+        
+        if not match:
+            print(f"Warning: No valid JSON markdown block found in the API response. Full response: {raw_text}")
             return []
+
+        json_string = match.group(1)
         
-        # Clean the response
-        cleaned_json = response.text.strip()
-        
-        # Remove common markdown formatting
-        if cleaned_json.startswith("```json"):
-            cleaned_json = cleaned_json[7:]
-        if cleaned_json.endswith("```"):
-            cleaned_json = cleaned_json[:-3]
-        
-        cleaned_json = cleaned_json.strip()
-        
-        # Check if the cleaned response is empty
-        if not cleaned_json:
-            print("Warning: Empty response after cleaning")
-            return []
-        
+        # Step 2: Try to parse the block, with a fallback to fix backslashes.
         try:
-            errors = json.loads(cleaned_json)
+            # First attempt to parse the extracted JSON.
+            errors = json.loads(json_string)
         except json.JSONDecodeError as e:
+            # If it fails due to an escape error, try to fix it.
             if "Invalid \\escape" in str(e):
-                print("Warning: Received invalid JSON from API. Attempting to fix backslashes...")
-                fixed_json = re.sub(r'(?<!\\)\\(?!["\\/bfnrt])', r'\\\\', cleaned_json)
+                print("Warning: Extracted JSON has invalid backslashes. Attempting to fix...")
+                # This regex replaces single backslashes with double backslashes.
+                fixed_json_string = re.sub(r'(?<!\\)\\(?!["\\/bfnrt])', r'\\\\', json_string)
                 try:
-                    errors = json.loads(fixed_json)
+                    # Retry parsing with the fixed string.
+                    errors = json.loads(fixed_json_string)
                     print("Successfully fixed and parsed JSON.")
                 except json.JSONDecodeError as e2:
+                    # If it still fails, we give up.
                     print(f"Failed to parse JSON even after fixing backslashes: {e2}")
-                    print(f"Original response: {response.text}")
+                    print(f"Original (extracted) string was: {json_string}")
                     return []
             else:
-                print(f"JSON parsing error: {e}")
-                print(f"Response text: {cleaned_json}")
+                # It's a different, more serious JSON error.
+                print(f"Failed to parse extracted JSON: {e}")
+                print(f"Extracted string was: {json_string}")
                 return []
 
         if isinstance(errors, list):
+            print(f"Backend Info: Received {len(errors)} errors from the Gemini API.")
             return errors
         else:
-            print(f"Gemini response was not a valid JSON list: {cleaned_json}")
+            print(f"Gemini response was not a valid JSON list: {json_string}")
             return []
 
     except Exception as e:

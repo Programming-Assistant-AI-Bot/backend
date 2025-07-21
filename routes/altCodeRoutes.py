@@ -26,7 +26,7 @@ If you provide multiple suggestions, clearly label each one."""
 
     ollama_api_url = 'http://localhost:11434/api/generate' 
     request_payload = {
-        'model': 'qwen2.5-coder:3b', 
+        'model': 'perlbot3:latest', 
         'prompt': prompt,
         'stream': True, 
         'options': {

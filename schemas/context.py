@@ -40,3 +40,20 @@ class CommentCodeRequest(BaseModel):
 
 class CommentCodeResponse(BaseModel):
     code: str
+
+
+class CodeCompletionRequest(BaseModel):
+    codePrefix: str
+    codeSuffix: str
+    # e.g. { "My::Utils": ["add","multiply"], … }
+    imports: Dict[str, List[str]]
+
+    usedModules: List[str]
+    variableDefinitions: List[str]
+
+    # e.g. { "My::Utils": [ImportDefinition, …], … }
+    importDefinitions: Dict[str, List[ImportDefinition]]
+
+    relatedCodeStructures: List[RelatedCodeStructure]
+
+    currentBlock: str
