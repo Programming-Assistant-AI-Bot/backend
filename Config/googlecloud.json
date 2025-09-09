@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "formidable-bank-459406-t4",
+  "private_key_id": "f692bd2138e78f7266fbac92cf28c7da70dc696e",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCkEyJ3Q0G5bSfz\nl7gYcOWLL7Q0gA7FZgQtlxXShUx5r8oSZ5XkrxiVmDyuGrvUyKz9G06SMBSrDzqM\nM/QELD42RgvNB9zOhc9e8F57j0XEDeMUVOqbeb+B/WJhEIgKCVwriuK9w5cYyAbF\ntqE3ogvQzVMLrJrqZOydAzyfWo84rx7UT0AXtqMAutJNGGSqDoFzDQzcdlF5PULO\nfDuAXWlmNua8S17NWARb90Oct3RjcyQQ7jezOOrSPiHba7e8UpWPyvbnumZfZRoN\nHcdRLA0j3RB/c4xoNbH5mpUlO7SsdLra2k7u3CDSIEnAP5tlLpRJdP1Po0w8z28K\n2i2BYyZjAgMBAAECggEAMx+lMx0ZSxI4ix3Appjy5TIph9xI/fgCIER977lKMXZ1\nU9PD8FwgoGgtrCA3W59ly33pNwLVRdG6b/o2M+CnR9j+j1W+Vvl5un7SKdTkK6ka\nEvk8mtJOOk4+C7mPcfUlq4mcif16RKX6+jskM8YBwX9gu3f+Uz+8PFZIWuzoSIRE\nsSV1pissFxI2r8vEwpisPUt351tq9HKF5KafbsdOs3YvNrE2Dne7BB886vRqKI4G\nkEWkws/VucBBIaP0CEV45rfjgciKKro1TcCDFXKC5mzjytt/ctE28HWKgQecGrOE\nbpZMhccC882rspZSUdy9WZbm+0IQY2Ghom+jILmGLQKBgQDOnEkpqCYiJKpLKOov\nUDpDbWKUyMb4t39o8DC5icSC2xIi5c6XENFLPjQcZ04js3sP267+25NzCQ/yW0Uu\nMM3rRd6oxytS4AE5n6Ew82zg9LOiZJAZMbzjfy6zbqHfFBpN/9u7hy9v5rLLsw7S\ntbEDyfak7s04/qPR5xH/S/fShwKBgQDLS9XwFDnxQHo88ClDF651pYpPhhUAKeHG\nsq436W/xv2porK3tF7zX0d6x9zH6XkRS77+reD40dtXOJODIT+HleiJvQ9rHKPWX\n56zayl4OCourRf3Han1fdBc8eeEbxsFY+kaz5f9Vponcv5icmurfhGkyBWUew7bf\n3TE1uD9YRQKBgBnixNveQGDYvSlLiAPDhnk6NDa17Q/uVZ09Mq2cUC2g6uXKaxbM\nOZy2v2qrmsOoUgvLl2JA+nlYMlJIEyPVY4dNqrb0tT3d6OliUZzDcunAXt1CwjcV\n3zeVkLFUdB1x9FW/b7VQG6ZmfhI9becCcpop7Kf/b2DrrnS3Aa89wl/zAoGBAL/c\nu3TP8ftAydyXH6oFQI4hhE4XEdzMqhsXaRq1ggPajjdpuN/JBl184Tp+PDm5G6xW\nPkM6wSJMgO4Dme0SjvQ+9x6hIGnTuyz45ga69Fc2Fqi27pJ0awxaCM/3ir7nLnSm\nB3Ii/347JWMjo4kxH7eBRLKDqvKE7SOLorS7RXUtAoGBAKpeTwwp2UGPssGfpycH\noujkD6iqgShIVDgSKLvPqmNCQT96PFLg6q26EaSnRnLjkO3HGVDnL5yrTGaiDxpF\nGb+NebAjB0VHHBhvtTRVpFVUdAMkkreItUeWmURy77A5Yqhn5SWqtVmzGZQQpwBq\nVBqsIJJjxLsULnpC2VW8w8wx\n-----END PRIVATE KEY-----\n",
+  "client_email": "teamarchelon@formidable-bank-459406-t4.iam.gserviceaccount.com",
+  "client_id": "117334602118447336064",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/teamarchelon%40formidable-bank-459406-t4.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}
