@@ -67,12 +67,21 @@ Create a `.env` file with the following variables:
 
 ```env
 # Database
-MONGODB_URL
+MONGODB_URL=mongodb://localhost:27017
 DATABASE_NAME=archelon_ai
+
+# JWT Configuration
+JWT_SECRET_KEY=your-secret-key
+JWT_ALGORITHM=HS256
+ACCESS_TOKEN_EXPIRE_MINUTES=30
 
 # AI Model Configuration
 OLLAMA_MODEL=perlbot3:latest
 OLLAMA_BASE_URL=http://localhost:11434
+
+# Google Cloud (if using)
+GOOGLE_APPLICATION_CREDENTIALS=Config/googlecloud.json
+```
 
 ## 🏗️ Project Structure
 
@@ -136,6 +145,15 @@ uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ### Production Mode
 ```bash
 uvicorn main:app --host 0.0.0.0 --port 8000 --workers 4
+```
+
+### With Docker
+```bash
+# Build image
+docker build -t archelon-backend .
+
+# Run container
+docker run -p 8000:8000 archelon-backend
 ```
 
 ## 📋 Requirements
