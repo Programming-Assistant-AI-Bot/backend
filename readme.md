@@ -5,7 +5,7 @@ A FastAPI-based backend service that powers an AI programming assistant with cha
 ## 🚀 Features
 
 ### 🤖 AI Chat Interface
-- **Real-time Chat**: WebSocket-based streaming responses with session management
+- **Real-time Chat**: Streaming responses with session management
 - **Multi-Session Support**: Create and manage multiple conversation sessions
 - **Chat History**: Persistent conversation storage with MongoDB
 
